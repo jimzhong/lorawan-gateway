@@ -170,6 +170,15 @@ void lora_set_frequency(long freq)
     write_byte(RegFrfLsb, (uint8_t)(frf));
 }
 
+long lora_get_frequency()
+{
+    long frf = 0;
+    frf = read_byte(RegFrfLsb);
+    frf |= ((long)read_byte(RegFrfMid) << 8);
+    frf |= ((long)read_byte(RegFrfMsb) << 16);
+    return frf;
+}
+
 void static lora_set_rx_timeout(int symbols)
 {
     assert(symbols >= 0);
@@ -282,7 +291,7 @@ void lora_init()
     // while((read_byte(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING)
     write_byte(LORARegIrqFlags, 0xFF);
     write_byte(LORARegIrqFlagsMask, 0xFF);
-    fprintf(stderr, "Inited.");
+    fprintf(stderr, "Inited.\n");
 }
 
 
