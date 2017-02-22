@@ -2,16 +2,14 @@
 #ifndef __RADIO_H__
 #define __RADIO_H__
 
-typedef enum { SF7=7, SF8, SF9, SF10, SF11, SF12 } sf_t;
-typedef enum { BW125=7, BW250, BW500 } bw_t;
-typedef enum { CR45=1, CR46, CR47, CR48 } cr_t;
-
 typedef struct
 {
-    sf_t sf;
-    bw_t bw;
-    cr_t cr;
-} modem_config_t;
+    uint8_t buf[128];
+    uint8_t len;
+    uint8_t snr;
+    uint8_t rssi;
+    long ms;
+} rx_info_t;
 
 #define PIN_NSS     6
 #define PIN_DIO0    7
