@@ -1,4 +1,5 @@
 #include "radio.h"
+#include "wiringPi.h"
 #include <stdio.h>
 
 int main()
