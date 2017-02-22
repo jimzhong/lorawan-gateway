@@ -56,7 +56,7 @@ uint8_t static read_byte(uint8_t addr)
     return spibuf[1];
 }
 
-void static write_byte(byte addr, byte value)
+void static write_byte(uint8_t addr, uint8_t value)
 {
     unsigned char spibuf[2];
     spibuf[0] = addr | 0x80;
@@ -268,17 +268,17 @@ void lora_set_frequency(long freq)
     write_byte(RegFrfLsb, (uint8_t)(frf));
 }
 
-int lora_init()
+void lora_init()
 {
-    printf(stderr, "Init...\n");
+    fprintf(stderr, "Init...\n");
     pin_init();
     lora_reset();
     assert(lora_get_version() == 0x12);
 
-    printf(stderr, "Inited.");
+    fprintf(stderr, "Inited.");
 }
 
-int lora_cleanup()
+void lora_cleanup()
 {
     fprintf("Cleaning up.\n")
     lora_set_opmode(OPMODE_SLEEP);
