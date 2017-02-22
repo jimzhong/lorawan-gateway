@@ -106,9 +106,9 @@ static void read_fifo (uint8_t* buf, uint8_t len)
 
 static void lora_reset()
 {
-    digitalWrite(PIN_RST, HIGH);
-    delay(100);
     digitalWrite(PIN_RST, LOW);
+    delay(100);
+    digitalWrite(PIN_RST, HIGH);
     delay(100);
 }
 
