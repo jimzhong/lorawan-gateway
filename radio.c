@@ -122,6 +122,13 @@ static void lora_set_opmode(uint8_t opmode)
     write_byte(RegOpMode, opmode | OPMODE_LORA | OPMODE_LOWFREQON);
 }
 
+static void dump_dio()
+{
+    fprintf(stderr, "DIO0 = %d, ", digitalRead(PIN_DIO0));
+    fprintf(stderr, "DIO1 = %d, ", digitalRead(PIN_DIO1));
+    fprintf(stderr, "DIO2 = %d\n", digitalRead(PIN_DIO2));
+}
+
 int lora_get_last_packet_coding_rate()
 {
     int cr = (read_byte(LORARegModemStat) >> 5) & 0x07;
