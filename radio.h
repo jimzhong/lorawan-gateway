@@ -2,6 +2,8 @@
 #ifndef __RADIO_H__
 #define __RADIO_H__
 
+#include <stdint.h>
+
 typedef struct
 {
     uint8_t buf[128];

@@ -85,7 +85,6 @@ void static write_byte(uint8_t addr, uint8_t value)
 
 static void write_fifo (uint8_t* buf, uint8_t len)
 {
-    int i;
     uint8_t addr = RegFifo | 0x80;
     select_chip();
     wiringPiSPIDataRW(SPI_CHANNEL, &addr, 1);
@@ -96,7 +95,6 @@ static void write_fifo (uint8_t* buf, uint8_t len)
 
 static void read_fifo (uint8_t* buf, uint8_t len)
 {
-    int i;
     uint8_t addr = RegFifo & 0x7f;
     select_chip();
     memset(buf, 0, sizeof(uint8_t) * len);
@@ -199,7 +197,7 @@ void lora_tx(uint8_t *data, uint8_t len)
     write_byte(LORARegFifoAddrPtr, 0);
     write_byte(LORARegPayloadLength, len);
 
-    write_fifo(RegFifo, data, len);
+    write_fifo(data, len);
 
     lora_set_opmode(OPMODE_TX); //start sending here
 
@@ -235,7 +233,7 @@ int lora_rx_single(uint8_t *buf, int timeout_symbols)
     write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
     // clear flags
     write_byte(LORARegIrqFlags, 0xFF);
-    write_byte(LORARegIrqFlagsMask, ~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK));
+    write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK)));
 
     // start receiving
     lora_set_opmode(OPMODE_RX_SINGLE);
@@ -250,11 +248,11 @@ int lora_rx_single(uint8_t *buf, int timeout_symbols)
     flags = read_byte(LORARegIrqFlags);
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
-        len = read_byte(LORARegRxNbBytes)
+        len = read_byte(LORARegRxNbBytes);
         // put fifo pointer to last packet
         write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
         // copy to buffer
-        read_fifo(RegFifo, buf, len);
+        read_fifo(buf, len);
     }
     else if (flags & IRQ_LORA_RXTOUT_MASK)
     {
@@ -262,7 +260,7 @@ int lora_rx_single(uint8_t *buf, int timeout_symbols)
     }
     else
     {
-        fprintf(stderr, "No RX flags\n", );
+        fprintf(stderr, "No RX flags\n");
     }
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
