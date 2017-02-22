@@ -243,5 +243,7 @@ char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMs
 
 #define LNA_RX_GAIN (0x20|0x1)
 
+void lora_init();
+void lora_cleanup();
 
 #endif
