@@ -103,44 +103,44 @@ uint8_t lora_get_sync_word()
 void lora_set_coding_rate(cr_t cr)
 {
     uint8_t val;
-    val = (read_byte(RegModemConfig1) & 0xf1) | (uint8_t)cr;
-    write_byte(RegModemConfig1, val);
+    val = (read_byte(LORARegModemConfig1) & 0xf1) | (uint8_t)cr;
+    write_byte(LORARegModemConfig1, val);
 }
 
 cr_t lora_get_coding_rate()
 {
-    return (cr_t)((read_byte(RegModemConfig1) >> 1) & 0x07);
+    return (cr_t)((read_byte(LORARegModemConfig1) >> 1) & 0x07);
 }
 
 void lora_set_bandwidth(bw_t bw)
 {
     uint8_t val;
-    val = (read_byte(RegModemConfig1) & 0x0f) | (uint8_t)bw;
-    write_byte(RegModemConfig1, val);
+    val = (read_byte(LORARegModemConfig1) & 0x0f) | (uint8_t)bw;
+    write_byte(LORARegModemConfig1, val);
 }
 
 bw_t lora_get_bandwidth()
 {
-    return (bw_t)((read_byte(RegModemConfig1) >> 4) & 0x0f);
+    return (bw_t)((read_byte(LORARegModemConfig1) >> 4) & 0x0f);
 }
 
 void lora_set_spreading_factor(sf_t sf)
 {
     uint8_t val;
-    val = (read_byte(RegModemConfig2) & 0x0f) | (uint8_t)sf;
-    write_byte(RegModemConfig2, val);
+    val = (read_byte(LORARegModemConfig2) & 0x0f) | (uint8_t)sf;
+    write_byte(LORARegModemConfig2, val);
 }
 
 sf_t lora_get_spreading_factor()
 {
-    return (sf_t)((read_byte(RegModemConfig2) >> 4) & 0x0f);
+    return (sf_t)((read_byte(LORARegModemConfig2) >> 4) & 0x0f);
 }
 
 void lora_set_rx_payload_crc(uint8_t on)
 {
     uint8_t val;
-    val = (read_byte(RegModemConfig2) & 0xfb) | (on << 2);
-    write_byte(RegModemConfig2, val);
+    val = (read_byte(LORARegModemConfig2) & 0xfb) | (on << 2);
+    write_byte(LORARegModemConfig2, val);
 }
 
 void lora_set_rx_timeout(int symbols)
@@ -149,15 +149,15 @@ void lora_set_rx_timeout(int symbols)
     assert(symbols <= 0x3ff);
 
     uint8_t val;
-    val = (read_byte(RegModemConfig2) & 0xfc) | ((symbols >> 8) & 0x3);
-    write_byte(RegModemConfig2, val);
+    val = (read_byte(LORARegModemConfig2) & 0xfc) | ((symbols >> 8) & 0x3);
+    write_byte(LORARegModemConfig2, val);
     write_byte(LORARegSymbTimeoutLsb, (uint8_t)(val & 0xff));
 }
 
 int lora_get_rx_timeout()
 {
     int msb;
-    msb = (read_byte(RegModemConfig2) & 0x03) << 8;
+    msb = (read_byte(LORARegModemConfig2) & 0x03) << 8;
     return msb | read_byte(LORARegSymbTimeoutLsb);
 }
 
@@ -280,7 +280,7 @@ void lora_init()
 
 void lora_cleanup()
 {
-    fprintf("Cleaning up.\n")
+    fprintf(stderr, "Cleaning up.\n");
     lora_set_opmode(OPMODE_SLEEP);
     pin_cleanup();
 }
