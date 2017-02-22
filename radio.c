@@ -122,11 +122,6 @@ static void lora_set_opmode(uint8_t opmode)
     write_byte(RegOpMode, opmode | OPMODE_LORA | OPMODE_LOWFREQON);
 }
 
-static uint8_t lora_get_opmode()
-{
-    return read_byte(RegOpMode);
-}
-
 int lora_get_last_packet_coding_rate()
 {
     int cr = (read_byte(LORARegModemStat) >> 5) & 0x07;
@@ -155,7 +150,6 @@ int lora_get_current_rssi()
 {
     return -164 + read_byte(LORARegRssiValue);
 }
-
 
 int lora_get_modem_status()
 {
@@ -343,4 +337,16 @@ void lora_cleanup()
     fprintf(stderr, "Cleaning up.\n");
     lora_set_opmode(OPMODE_SLEEP);
     pin_cleanup();
+}
+
+
+void dump_hex(void *data, int len)
+{
+    uint8_t *ptr = data;
+    int i;
+    for (i = 0; i < len; i++)
+    {
+        printf("%2x", ptr[i]);
+    }
+    printf("\n");
 }

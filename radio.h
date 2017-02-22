@@ -238,4 +238,6 @@ int lora_get_current_rssi();
 void lora_set_frequency(long freq);
 long lora_get_frequency();
 
+void dump_hex(void *data, int len)
+
 #endif
