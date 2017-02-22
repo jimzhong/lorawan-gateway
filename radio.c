@@ -298,6 +298,7 @@ void lora_init()
     // while((read_byte(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING)
     write_byte(LORARegIrqFlags, 0xFF);
     write_byte(LORARegIrqFlagsMask, 0xFF);
+    dump_dio();
     fprintf(stderr, "Inited.\n");
 }
 
@@ -340,6 +341,7 @@ int lora_config(int sf, int cr, int bw, int prelen, uint8_t syncword)
     write_byte(LORARegPreambleLsb, (prelen) & 0xff);
     // set sync word
     write_byte(LORARegSyncWord, syncword);
+    dump_dio();
     return 0;
 }
 
