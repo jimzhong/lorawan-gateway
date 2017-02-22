@@ -87,7 +87,7 @@ void lora_set_opmode(uint8_t opmode)
 
 uint8_t lora_get_opmode()
 {
-    return read_byte(RegOpMode)
+    return read_byte(RegOpMode);
 }
 
 void lora_set_sync_word(uint8_t sync)
