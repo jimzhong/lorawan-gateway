@@ -67,7 +67,7 @@ uint8_t static read_byte(uint8_t addr)
     wiringPiSPIDataRW(SPI_CHANNEL, spibuf, 2);
     unselect_chip();
 
-    fprintf(stderr, "Read %x from %s\n", spibuf[1], regname[addr]);
+    fprintf(stderr, "Read 0x%x from %s\n", spibuf[1], regname[addr]);
 
     return spibuf[1];
 }
@@ -77,10 +77,10 @@ void static write_byte(uint8_t addr, uint8_t value)
     unsigned char spibuf[2];
     spibuf[0] = addr | 0x80;
     spibuf[1] = value;
-    fprintf(stderr, "Writing %x to %s\n", value, regname[addr]);
     select_chip();
     wiringPiSPIDataRW(SPI_CHANNEL, spibuf, 2);
     unselect_chip();
+    fprintf(stderr, "Wrote 0x%x to %s\n", value, regname[addr]);
 }
 
 void lora_reset()
