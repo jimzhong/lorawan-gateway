@@ -308,7 +308,7 @@ int lora_config(int sf, int cr, int bw, int prelen, uint8_t syncword)
 {
     uint8_t mc1 = 0;
     uint8_t mc2 = 0;
-
+    fprintf("Setting SF=%d, CR=%d, BW=%d, prelen=%d, sync=0x%x\n", sf, cr, bw, prelen, syncword);
     switch (bw)
     {
         case 125: mc1 |= 0x70; break;
