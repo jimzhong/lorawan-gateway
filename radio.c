@@ -172,11 +172,13 @@ void lora_set_frequency(long freq)
 
 long lora_get_frequency()
 {
-    long frf = 0;
+    long long frf = 0;
     frf = read_byte(RegFrfLsb);
     frf |= ((long)read_byte(RegFrfMid) << 8);
     frf |= ((long)read_byte(RegFrfMsb) << 16);
-    return frf;
+
+    frf = (frf * 32000000) >> 19;
+    return (long)frf;
 }
 
 void static lora_set_rx_timeout(int symbols)
