@@ -9,7 +9,7 @@ int main()
     lora_init();
     lora_config(8, 45, 125, 8, 0x34);
 
-    len = lora_rx_single(rxbuf, 1024);
+    len = lora_rx_single(rxbuf, 1000);
     printf("%d\n", len);
     if (len > 0)
     {
