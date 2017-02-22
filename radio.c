@@ -249,6 +249,9 @@ int lora_rx_single(uint8_t *buf, int timeout_symbols)
     }
     while(state == 0);
 
+    printf("DIO0: %d\n", digitalRead(PIN_DIO0));
+    printf("DIO1: %d\n", digitalRead(PIN_DIO1));
+
     // check flags
     flags = read_byte(LORARegIrqFlags);
     if (flags & IRQ_LORA_RXDONE_MASK)
@@ -265,6 +268,7 @@ int lora_rx_single(uint8_t *buf, int timeout_symbols)
     }
     else
     {
+        len = -1;
         fprintf(stderr, "No RX flags\n");
     }
     write_byte(LORARegIrqFlagsMask, 0xFF);
