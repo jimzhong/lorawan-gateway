@@ -210,12 +210,15 @@ void lora_tx(uint8_t *data, uint8_t len)
     write_byte(LORARegPayloadLength, len);
 
     write_fifo(data, len);
+    dump_dio();
 
     lora_set_opmode(OPMODE_TX); //start sending here
 
     do {
         state = digitalRead(PIN_DIO0);
     } while(state == 0);
+
+    dump_dio();
 
     flags = read_byte(LORARegIrqFlags);
     assert(flags & IRQ_LORA_TXDONE_MASK);
@@ -246,7 +249,7 @@ int lora_rx_single(uint8_t *buf, int timeout_symbols)
     // clear flags
     write_byte(LORARegIrqFlags, 0xFF);
     write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK)));
-
+    dump_dio();
     // start receiving
     lora_set_opmode(OPMODE_RX_SINGLE);
 
@@ -255,10 +258,7 @@ int lora_rx_single(uint8_t *buf, int timeout_symbols)
         state = digitalRead(PIN_DIO0) | digitalRead(PIN_DIO1);
     }
     while(state == 0);
-
-    printf("DIO0: %d\n", digitalRead(PIN_DIO0));
-    printf("DIO1: %d\n", digitalRead(PIN_DIO1));
-
+    dump_dio();
     // check flags
     flags = read_byte(LORARegIrqFlags);
     if (flags & IRQ_LORA_RXDONE_MASK)
