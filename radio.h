@@ -229,5 +229,10 @@ typedef struct
 
 void lora_init();
 void lora_cleanup();
+int lora_config(int sf, int cr, int bw, int prelen, uint8_t syncword);
+int lora_rx_single(uint8_t *buf, int timeout_symbols);
+void lora_tx(uint8_t *data, uint8_t len);
+void lora_set_frequency(long freq);
+int lora_get_current_rssi();
 
 #endif

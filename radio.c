@@ -170,7 +170,7 @@ void lora_set_frequency(long freq)
     write_byte(RegFrfLsb, (uint8_t)(frf));
 }
 
-void lora_set_rx_timeout(int symbols)
+void static lora_set_rx_timeout(int symbols)
 {
     assert(symbols >= 0);
     assert(symbols <= 0x3ff);
