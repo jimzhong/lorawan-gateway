@@ -13,22 +13,6 @@ typedef struct
     cr_t cr;
 } modem_config_t;
 
-char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMsb", \
-"RegFrfMid", "RegFrfLsb", "RegPaConfig", "RegPaRamp", "RegOcp", "RegLna", \
-"LORARegFifoAddrPtr", "LORARegFifoTxBaseAddr", "LORARegFifoRxBaseAddr", \
-"LORARegFifoRxCurrentAddr", "LORARegIrqFlagsMask", "LORARegIrqFlags", \
-"LORARegRxNbBytes", "LORARegRxHeaderCntValueMsb", "LORARegRxHeaderCntValueLsb", \
-"LORARegRxPacketCntValueMsb", "LORARegRxpacketCntValueLsb", "LORARegModemStat", \
-"LORARegPktSnrValue", "LORARegPktRssiValue", "LORARegRssiValue", "LORARegHopChannel", \
-"LORARegModemConfig1", "LORARegModemConfig2", "LORARegSymbTimeoutLsb", \
-"LORARegPreambleMsb", "LORARegPreambleLsb", "LORARegPayloadLength", \
-"LORARegPayloadMaxLength", "LORARegHopPeriod", "LORARegFifoRxByteAddr", \
-"LORARegModemConfig3", "N/A", "LORARegFeiMsb", "LORAFeiMib", "LORARegFeiLsb", \
-"N/A", "LORARegRssiWideband", "N/A", "N/A", "N/A", "N/A", "LORARegDetectOptimize", \
-"N/A", "LORARegInvertIQ", "N/A", "N/A", "N/A", "LORARegDetectionThreshold", "N/A", \
-"LORARegSyncWord", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "RegDioMapping1", \
-"RegDioMapping2", "RegVersion"};
-
 #define PIN_NSS     6
 #define PIN_DIO0    7
 #define PIN_RST     21
