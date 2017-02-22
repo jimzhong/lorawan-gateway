@@ -14,8 +14,8 @@ typedef struct
 } rx_info_t;
 
 #define PIN_NSS     6
-#define PIN_DIO0    7
-#define PIN_RST     21
+#define PIN_DIO0    2
+#define PIN_RST     3
 #define PIN_DIO2    5
 #define PIN_DIO1    4
 
