@@ -224,7 +224,7 @@ void lora_cleanup();
 int lora_config(int sf, int cr, int bw);
 
 int lora_rx_single(rx_info_t *data, int timeout_symbols);
-int lora_rx_continuous_start(int timeout_symbols);
+int lora_rx_continuous_start();
 int lora_rx_continuous_get(rx_info_t *data);
 int lora_rx_continuous_stop();
 int lora_tx(uint8_t *data, uint8_t len);
