@@ -7,6 +7,7 @@
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
 #include "radio.h"
+#include "sx1278.h"
 #include "config.h"
 
 static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMsb", \
@@ -282,14 +283,13 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
         lora_set_rx_timeout(timeout_symbols);
     }
 
-    write_byte(RegLna, LNA_RX_GAIN);
+    write_byte(RegLna, CONFIG_LORA_LNA_RX_GAIN);
     write_byte(LORARegPayloadMaxLength, CONFIG_LORA_MAX_RX_LENGTH);
 
     write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
     // clear flags
     write_byte(LORARegIrqFlags, 0xFF);
     write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK)));
-    dump_dio();
     // start receiving
     lora_set_opmode(OPMODE_RX_SINGLE);
 
@@ -298,7 +298,6 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
         state = digitalRead(PIN_DIO0) | digitalRead(PIN_DIO1);
     }
     while(state == 0);
-    dump_dio();
     // check flags
     flags = read_byte(LORARegIrqFlags);
     // timestamp
@@ -340,7 +339,7 @@ int lora_rx_continuous_start()
         lora_set_invert_iq();
     #endif
 
-    write_byte(RegLna, LNA_RX_GAIN);
+    write_byte(RegLna, CONFIG_LORA_LNA_RX_GAIN);
     write_byte(LORARegPayloadMaxLength, CONFIG_LORA_MAX_RX_LENGTH);
     write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
     // clear flags
@@ -355,7 +354,6 @@ int lora_rx_continuous_start()
 
 int lora_rx_continuous_get(rx_info_t *data)
 {
-    int state;
     uint8_t flags;
 
     assert(lora_get_opmode() == OPMODE_RX);

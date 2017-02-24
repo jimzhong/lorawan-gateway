@@ -7,6 +7,8 @@
 #define CONFIG_LORA_PREAMBLE_LENGTH 8
 #define CONFIG_LORA_SYNC_WORD 0x12
 
+#define CONFIG_LORA_LNA_RX_GAIN (0x20|0x1)
+
 #define PIN_NSS     6
 #define PIN_DIO0    2
 #define PIN_RST     3
