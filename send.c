@@ -23,7 +23,7 @@ int main()
     while (running)
     {
         lora_tx(packet, 3);
-        delay(1000);
+        delay(5000);
     }
     lora_cleanup();
     return 0;
