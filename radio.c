@@ -123,6 +123,11 @@ static void lora_set_opmode(uint8_t opmode)
     write_byte(RegOpMode, opmode | OPMODE_LORA | OPMODE_LOWFREQON);
 }
 
+static uint8_t lora_get_opmode()
+{
+    return read_byte(RegOpMode) & OPMODE_MASK;
+}
+
 static void dump_dio()
 {
     fprintf(stderr, "DIO0 = %d, ", digitalRead(PIN_DIO0));
@@ -206,7 +211,7 @@ long lora_get_frequency()
     return (long)frf;
 }
 
-void lora_tx(uint8_t *data, uint8_t len)
+int lora_tx(uint8_t *data, uint8_t len)
 {
     uint8_t flags;
     int state;
@@ -246,6 +251,8 @@ void lora_tx(uint8_t *data, uint8_t len)
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
     fprintf(stderr, "Data sent\n");
+
+    return 0;
 }
 
 // return the length of received packet
@@ -254,6 +261,11 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
 {
     int state;
     uint8_t flags;
+    uint8_t mode;
+
+    mode = lora_get_opmode();
+
+    assert (mode == OPMODE_STANDBY || mode == OPMODE_SLEEP);
 
     lora_set_opmode(OPMODE_STANDBY);
 
@@ -289,6 +301,8 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     dump_dio();
     // check flags
     flags = read_byte(LORARegIrqFlags);
+    // timestamp
+    data->ms = millis();
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
         data->len = read_byte(LORARegRxNbBytes);
@@ -308,6 +322,81 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
     return data->len;
+}
+
+int lora_rx_continuous_start(int timeout_symbols)
+{
+    uint8_t mode;
+
+    mode = lora_get_opmode();
+    assert (mode == OPMODE_STANDBY || mode == OPMODE_SLEEP);
+    lora_set_opmode(OPMODE_STANDBY);
+
+    #ifdef CONFIG_LORA_IS_GATEWAY
+        // do NOT invert I and Q when RX on gateway
+        lora_clear_invert_iq();
+    #else
+        // invert I and Q when RX on mote
+        lora_set_invert_iq();
+    #endif
+
+    if (timeout_symbols > 0)
+    {
+        lora_set_rx_timeout(timeout_symbols);
+    }
+
+    write_byte(RegLna, LNA_RX_GAIN);
+    write_byte(LORARegPayloadMaxLength, CONFIG_LORA_MAX_RX_LENGTH);
+    write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
+    // clear flags
+    write_byte(LORARegIrqFlags, 0xFF);
+    write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK)));
+    // start receiving
+    lora_set_opmode(OPMODE_RX);
+    return 0;
+}
+
+int lora_rx_continuous_get(rx_info_t *data)
+{
+    int state;
+    uint8_t flags;
+
+    assert(lora_get_opmode == OPMODE_RX);
+    // wait for rxdone or timeout
+    do {
+        state = digitalRead(PIN_DIO0) | digitalRead(PIN_DIO1);
+    }
+    while (state == 0);
+    // check flags
+    flags = read_byte(LORARegIrqFlags);
+    // timestamp
+    data->ms = millis();
+    if (flags & IRQ_LORA_RXDONE_MASK)
+    {
+        data->len = read_byte(LORARegRxNbBytes);
+        // put fifo pointer to last packet
+        write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
+        // copy to buffer
+        read_fifo(data->buf, data->len);
+        data->snr = lora_get_last_packet_snr();
+        data->rssi = lora_get_last_packet_rssi();
+        data->cr = lora_get_last_packet_coding_rate();
+    }
+    else
+    {
+        fprintf(stderr, "RX timeout.\n");
+        data->len = 0;
+    }
+    write_byte(LORARegIrqFlagsMask, 0xFF);
+    write_byte(LORARegIrqFlags, 0xFF);
+    return data->len;
+}
+
+int lora_rx_continuous_stop()
+{
+    assert(lora_get_opmode == OPMODE_RX);
+    lora_set_opmode(OPMODE_SLEEP);
+    return 0;
 }
 
 void lora_init()
