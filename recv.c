@@ -25,8 +25,8 @@ int main()
     while (!stopping)
     {
         lora_rx_continuous_get(&data);
-        dump_hex(data->buf, data->len);
-        fprintf(stderr, "SNR=%d, RSSI=%d, CR=%d, TM=%ld\n", data->snr, data->rssi, data->cr, data->ms);
+        fprintf(stderr, "SNR=%d, RSSI=%d, CR=%d, TM=%ld\n", data.snr, data.rssi, data.cr, data.ms);
+        dump_hex(dats.buf, data.len);
     }
 
     lora_rx_continuous_stop();
