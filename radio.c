@@ -9,7 +9,7 @@
 #include "radio.h"
 #include "config.h"
 
-char static *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMsb", \
+static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMsb", \
 "RegFrfMid", "RegFrfLsb", "RegPaConfig", "RegPaRamp", "RegOcp", "RegLna", \
 "LORARegFifoAddrPtr", "LORARegFifoTxBaseAddr", "LORARegFifoRxBaseAddr", \
 "LORARegFifoRxCurrentAddr", "LORARegIrqFlagsMask", "LORARegIrqFlags", \
@@ -335,7 +335,7 @@ int lora_config(int sf, int cr, int bw)
     uint8_t mc2 = 0;
     uint8_t mc3 = 0;
 
-    fprintf(stderr, "Setting SF=%d, CR=%d, BW=%d, prelen=%d, sync=0x%x\n", sf, cr, bw, prelen, syncword);
+    fprintf(stderr, "Set SF=%d, CR=%d, BW=%d, prelen=%d, sync=0x%x\n", sf, cr, bw, CONFIG_LORA_PREAMBLE_LENGTH, CONFIG_LORA_SYNC_WORD);
     switch (bw)
     {
         case 125: mc1 |= 0x70; break;
