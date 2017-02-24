@@ -7,6 +7,7 @@
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
 #include "radio.h"
+#include "config.h"
 
 char static *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMsb", \
 "RegFrfMid", "RegFrfLsb", "RegPaConfig", "RegPaRamp", "RegOcp", "RegLna", \
