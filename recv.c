@@ -20,7 +20,7 @@ int main()
     lora_init();
     lora_config(11, 46, 125);
 
-    lora_rx_continuous_start(1000);
+    lora_rx_continuous_start(100);
 
     while (!stopping)
     {

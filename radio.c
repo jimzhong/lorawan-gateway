@@ -353,6 +353,8 @@ int lora_rx_continuous_start(int timeout_symbols)
     write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK)));
     // start receiving
     lora_set_opmode(OPMODE_RX);
+
+    fprintf(stderr, "RX conti started.\n");
     return 0;
 }
 
@@ -362,6 +364,7 @@ int lora_rx_continuous_get(rx_info_t *data)
     uint8_t flags;
 
     assert(lora_get_opmode() == OPMODE_RX);
+    fprintf(stderr, "Waiting to get packet");
     // wait for rxdone or timeout
     do {
         state = digitalRead(PIN_DIO0) | digitalRead(PIN_DIO1);
@@ -373,6 +376,7 @@ int lora_rx_continuous_get(rx_info_t *data)
     data->ms = millis();
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
+        fprintf(stderr, "Got a packet\n");
         data->len = read_byte(LORARegRxNbBytes);
         // put fifo pointer to last packet
         write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
