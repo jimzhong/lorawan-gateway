@@ -1,20 +1,35 @@
 #include "radio.h"
 #include <stdio.h>
+#include <signal.h>
+
+volatile int stopping = 0;
+
+void stop()
+{
+    stopping = 1;
+}
+
 
 int main()
 {
-    uint8_t rxbuf[128];
+    rx_info_t data;
     int len;
 
-    lora_init();
-    lora_config(11, 46, 125, 8, 0x34);
+    signal(SIG_INT, stop);
 
-    len = lora_rx_single(rxbuf, 1000);
-    printf("%d\n", len);
-    if (len > 0)
+    lora_init();
+    lora_config(11, 46, 125);
+
+    lora_rx_continuous_start();
+
+    while (!stopping)
     {
-        dump_hex(rxbuf, len);
+        lora_rx_continuous_get(&data);
+        dump_hex(data->buf, data->len);
+        fprintf(stderr, "SNR=%d, RSSI=%d, CR=%d, TM=%ld\n", data->snr, data->rssi, data->cr, data->ms);
     }
+
+    lora_rx_continuous_stop();
 
     lora_cleanup();
     return 0;
