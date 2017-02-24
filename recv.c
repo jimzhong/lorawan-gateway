@@ -6,7 +6,9 @@ volatile int stopping = 0;
 
 void stop()
 {
-    stopping = 1;
+    lora_rx_continuous_stop();
+    lora_cleanup();
+    exit(0);
 }
 
 
@@ -20,7 +22,7 @@ int main()
     lora_init();
     lora_config(11, 46, 125);
 
-    lora_rx_continuous_start(100);
+    lora_rx_continuous_start();
 
     while (!stopping)
     {
@@ -29,8 +31,5 @@ int main()
         dump_hex(data.buf, data.len);
     }
 
-    lora_rx_continuous_stop();
-
-    lora_cleanup();
     return 0;
 }

@@ -324,7 +324,7 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     return data->len;
 }
 
-int lora_rx_continuous_start(int timeout_symbols)
+int lora_rx_continuous_start()
 {
     uint8_t mode;
 
@@ -340,17 +340,12 @@ int lora_rx_continuous_start(int timeout_symbols)
         lora_set_invert_iq();
     #endif
 
-    if (timeout_symbols > 0)
-    {
-        lora_set_rx_timeout(timeout_symbols);
-    }
-
     write_byte(RegLna, LNA_RX_GAIN);
     write_byte(LORARegPayloadMaxLength, CONFIG_LORA_MAX_RX_LENGTH);
-    write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
+    write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
     // clear flags
     write_byte(LORARegIrqFlags, 0xFF);
-    write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK)));
+    write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK)));
     // start receiving
     lora_set_opmode(OPMODE_RX);
 
@@ -365,11 +360,8 @@ int lora_rx_continuous_get(rx_info_t *data)
 
     assert(lora_get_opmode() == OPMODE_RX);
     fprintf(stderr, "Waiting to get packet");
-    // wait for rxdone or timeout
-    do {
-        state = digitalRead(PIN_DIO0) | digitalRead(PIN_DIO1);
-    }
-    while (state == 0);
+    // wait for rxdone
+    while (digitalRead(PIN_DIO0) == 0);
     // check flags
     flags = read_byte(LORARegIrqFlags);
     // timestamp
@@ -388,7 +380,7 @@ int lora_rx_continuous_get(rx_info_t *data)
     }
     else
     {
-        fprintf(stderr, "RX timeout.\n");
+        fprintf(stderr, "RX Error.\n");
         data->len = 0;
     }
     write_byte(LORARegIrqFlagsMask, 0xFF);
