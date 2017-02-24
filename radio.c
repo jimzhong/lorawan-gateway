@@ -68,7 +68,7 @@ uint8_t static read_byte(uint8_t addr)
     wiringPiSPIDataRW(SPI_CHANNEL, spibuf, 2);
     unselect_chip();
 
-    fprintf(stderr, "Read 0x%x from %s\n", spibuf[1], regname[addr]);
+    // fprintf(stderr, "Read 0x%x from %s\n", spibuf[1], regname[addr]);
 
     return spibuf[1];
 }
@@ -81,7 +81,7 @@ void static write_byte(uint8_t addr, uint8_t value)
     select_chip();
     wiringPiSPIDataRW(SPI_CHANNEL, spibuf, 2);
     unselect_chip();
-    fprintf(stderr, "Wrote 0x%x to %s\n", value, regname[addr]);
+    // fprintf(stderr, "Wrote 0x%x to %s\n", value, regname[addr]);
 }
 
 static void write_fifo (uint8_t* buf, uint8_t len)
@@ -91,7 +91,7 @@ static void write_fifo (uint8_t* buf, uint8_t len)
     wiringPiSPIDataRW(SPI_CHANNEL, &addr, 1);
     wiringPiSPIDataRW(SPI_CHANNEL, buf, len);
     unselect_chip();
-    fprintf(stderr, "Wrote %u bytes to 0x%x\n", len, addr & 0x7f);
+    // fprintf(stderr, "Wrote %u bytes to 0x%x\n", len, addr & 0x7f);
 }
 
 static void read_fifo (uint8_t* buf, uint8_t len)
@@ -102,7 +102,7 @@ static void read_fifo (uint8_t* buf, uint8_t len)
     wiringPiSPIDataRW(SPI_CHANNEL, &addr, 1);
     wiringPiSPIDataRW(SPI_CHANNEL, buf, len);
     unselect_chip();
-    fprintf(stderr, "Read %u bytes from 0x%x\n", len, addr & 0x7f);
+    // fprintf(stderr, "Read %u bytes from 0x%x\n", len, addr & 0x7f);
 }
 
 static void lora_reset()
