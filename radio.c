@@ -237,7 +237,7 @@ int lora_tx(uint8_t *data, uint8_t len)
     write_byte(LORARegPayloadLength, len);
 
     write_fifo(data, len);
-    dump_dio();
+    // dump_dio();
 
     lora_set_opmode(OPMODE_TX); //start sending here
 
@@ -245,7 +245,7 @@ int lora_tx(uint8_t *data, uint8_t len)
         state = digitalRead(PIN_DIO0);
     } while(state == 0);
 
-    dump_dio();
+    // dump_dio();
 
     flags = read_byte(LORARegIrqFlags);
     assert(flags & IRQ_LORA_TXDONE_MASK);
