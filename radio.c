@@ -361,7 +361,7 @@ int lora_rx_continuous_get(rx_info_t *data)
     int state;
     uint8_t flags;
 
-    assert(lora_get_opmode == OPMODE_RX);
+    assert(lora_get_opmode() == OPMODE_RX);
     // wait for rxdone or timeout
     do {
         state = digitalRead(PIN_DIO0) | digitalRead(PIN_DIO1);
@@ -394,7 +394,7 @@ int lora_rx_continuous_get(rx_info_t *data)
 
 int lora_rx_continuous_stop()
 {
-    assert(lora_get_opmode == OPMODE_RX);
+    assert(lora_get_opmode() == OPMODE_RX);
     lora_set_opmode(OPMODE_SLEEP);
     return 0;
 }
