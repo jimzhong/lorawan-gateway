@@ -359,7 +359,7 @@ int lora_rx_continuous_get(rx_info_t *data)
     uint8_t flags;
 
     assert(lora_get_opmode() == OPMODE_RX);
-    fprintf(stderr, "Waiting to get packet");
+    fprintf(stderr, "Waiting to get packet.\n");
     // wait for rxdone
     while (digitalRead(PIN_DIO0) == 0);
     // check flags
@@ -368,7 +368,7 @@ int lora_rx_continuous_get(rx_info_t *data)
     data->ms = millis();
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
-        fprintf(stderr, "Got a packet\n");
+        fprintf(stderr, "Got a packet.\n");
         data->len = read_byte(LORARegRxNbBytes);
         // put fifo pointer to last packet
         write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
@@ -390,6 +390,7 @@ int lora_rx_continuous_get(rx_info_t *data)
 int lora_rx_continuous_stop()
 {
     assert(lora_get_opmode() == OPMODE_RX);
+    write_byte(LORARegIrqFlags, 0xFF);
     write_byte(LORARegIrqFlagsMask, 0xFF);
     lora_set_opmode(OPMODE_SLEEP);
     return 0;
