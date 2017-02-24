@@ -383,14 +383,14 @@ int lora_rx_continuous_get(rx_info_t *data)
         fprintf(stderr, "RX Error.\n");
         data->len = 0;
     }
-    write_byte(LORARegIrqFlagsMask, 0xFF);
-    write_byte(LORARegIrqFlags, 0xFF);
     return data->len;
 }
 
 int lora_rx_continuous_stop()
 {
     assert(lora_get_opmode() == OPMODE_RX);
+    write_byte(LORARegIrqFlagsMask, 0xFF);
+    write_byte(LORARegIrqFlags, 0xFF);
     lora_set_opmode(OPMODE_SLEEP);
     return 0;
 }
