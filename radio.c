@@ -23,8 +23,8 @@ static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "R
 "LORARegModemConfig3", "N/A", "LORARegFeiMsb", "LORAFeiMib", "LORARegFeiLsb", \
 "N/A", "LORARegRssiWideband", "N/A", "N/A", "N/A", "N/A", "LORARegDetectOptimize", \
 "N/A", "LORARegInvertIQ", "N/A", "N/A", "N/A", "LORARegDetectionThreshold", "N/A", \
-"LORARegSyncWord", "FSKRegTimer2Coef", "FSKRegImageCal", "N/A", "N/A", "N/A", "N/A", "RegDioMapping1", \
-"RegDioMapping2", "RegVersion"};
+"LORARegSyncWord", "FSKRegTimer2Coef", "FSKRegImageCal", "N/A", "N/A", "N/A", "N/A", \
+"RegDioMapping1", "RegDioMapping2", "RegVersion"};
 
 
 void static pin_init()
@@ -186,6 +186,11 @@ static int lora_get_modem_status()
     return (read_byte(LORARegModemStat) & 0x1f);
 }
 
+static int lora_get_last_packet_crc()
+{
+    return read_byte(LORARegHopChannel) & 0x20;
+}
+
 /* Below are exported functions */
 
 int lora_get_current_rssi()
@@ -217,7 +222,7 @@ int lora_tx(uint8_t *data, uint8_t len)
     uint8_t flags;
     int state;
 
-    fprintf(stderr, "Sending data of %d bytes.\n", len);
+    // fprintf(stderr, "Sending data of %d bytes.\n", len);
     lora_set_opmode(OPMODE_STANDBY);
 
 #ifdef CONFIG_LORA_IS_GATEWAY
@@ -251,7 +256,7 @@ int lora_tx(uint8_t *data, uint8_t len)
     assert(flags & IRQ_LORA_TXDONE_MASK);
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
-    fprintf(stderr, "Data sent\n");
+    // fprintf(stderr, "Data sent\n");
 
     return 0;
 }
@@ -289,7 +294,7 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
     // clear flags
     write_byte(LORARegIrqFlags, 0xFF);
-    write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK)));
+    write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK|IRQ_LORA_CRCERR_MASK)));
     // start receiving
     lora_set_opmode(OPMODE_RX_SINGLE);
 
@@ -304,14 +309,23 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     data->ms = millis();
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
-        data->len = read_byte(LORARegRxNbBytes);
-        // put fifo pointer to last packet
-        write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
-        // copy to buffer
-        read_fifo(data->buf, data->len);
         data->snr = lora_get_last_packet_snr();
         data->rssi = lora_get_last_packet_rssi();
         data->cr = lora_get_last_packet_coding_rate();
+        // only copy data if crc check is OK or no crc checksum
+        if ((lora_get_last_packet_crc() == 0) || ((flags & IRQ_LORA_CRCERR_MASK) == 0))
+        {
+            data->len = read_byte(LORARegRxNbBytes);
+            // put fifo pointer to last packet
+            write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
+            // copy to buffer
+            read_fifo(data->buf, data->len);
+        }
+        else
+        {
+            fprintf(stderr, "CRC check failed.\n");
+            data->len = 0;
+        }
     }
     else
     {
@@ -344,11 +358,11 @@ int lora_rx_continuous_start()
     write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
     // clear flags
     write_byte(LORARegIrqFlags, 0xFF);
-    write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK)));
+    write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_CRCERR_MASK)));
     // start receiving
     lora_set_opmode(OPMODE_RX);
 
-    fprintf(stderr, "RX conti started.\n");
+    fprintf(stderr, "RX continuous started.\n");
     return 0;
 }
 
@@ -367,14 +381,22 @@ int lora_rx_continuous_get(rx_info_t *data)
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
         fprintf(stderr, "Got a packet.\n");
-        data->len = read_byte(LORARegRxNbBytes);
-        // put fifo pointer to last packet
-        write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
-        // copy to buffer
-        read_fifo(data->buf, data->len);
         data->snr = lora_get_last_packet_snr();
         data->rssi = lora_get_last_packet_rssi();
         data->cr = lora_get_last_packet_coding_rate();
+        if ((lora_get_last_packet_crc() == 0) || ((flags & IRQ_LORA_CRCERR_MASK) == 0))
+        {
+            data->len = read_byte(LORARegRxNbBytes);
+            // put fifo pointer to last packet
+            write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
+            // copy to buffer
+            read_fifo(data->buf, data->len);
+        }
+        else
+        {
+            data->len = 0;
+            fprintf(stderr, "CRC failed.\n");
+        }
     }
     else
     {
@@ -427,7 +449,6 @@ int lora_config(int sf, int cr, int bw)
         case 500: mc1 |= 0x90; break;
         default: fprintf(stderr, "Unknown BW = %d\n", bw); return -1;
     }
-
     switch (cr) {
         case 45: mc1 |= 0x02; break;
         case 46: mc1 |= 0x04; break;
@@ -435,6 +456,10 @@ int lora_config(int sf, int cr, int bw)
         case 48: mc1 |= 0x08; break;
         default: fprintf(stderr, "Unknown CR = %d\n", cr); return -1;
     }
+
+#ifdef CONFIG_LORA_PAYLOAD_CRC
+    mc2 |= SX1278_MC2_RX_PAYLOAD_CRCON;
+#endif
 
     if (sf >= 7 && sf <= 12)
     {
