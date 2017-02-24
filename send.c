@@ -5,8 +5,8 @@
 int main()
 {
     lora_init();
-    lora_config(8, 45, 125, 8, 0x34);
-
+    lora_config(11, 45, 125);
+    lora_set_txpower(15);
     while (1)
     {
         lora_tx("Hello world", 11);

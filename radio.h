@@ -1,5 +1,5 @@
-
 #ifndef __RADIO_H__
+
 #define __RADIO_H__
 
 #include <stdint.h>
@@ -7,20 +7,12 @@
 typedef struct
 {
     uint8_t buf[128];
-    uint8_t len;
-    uint8_t snr;
-    uint8_t rssi;
-    long ms;
+    int len;
+    int snr;
+    int rssi;
+    int cr;
+    uint32_t ms;    // milliseconds
 } rx_info_t;
-
-#define PIN_NSS     6
-#define PIN_DIO0    2
-#define PIN_RST     3
-#define PIN_DIO2    5
-#define PIN_DIO1    4
-
-#define SPI_FREQ    500000
-#define SPI_CHANNEL 0
 
 // Registers Mapping
 #define RegFifo                                    0x00 // common

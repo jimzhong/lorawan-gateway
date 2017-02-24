@@ -7,6 +7,12 @@ all: gateway
 gateway: radio.o mac.o net.o main.o aes.o
 	$(CC) radio.o mac.o net.o main.o aes.o $(LIBS) -o gateway
 
+send: send.c radio.o
+	$(CC) radio.o send.c $(LIBS) -o send
+
+recv: recv.c radio.o
+	$(CC) radio.o recv.c $(LIBS) -o recv
+
 main.o: main.c
 	$(CC) $(CFLAGS) main.c
 

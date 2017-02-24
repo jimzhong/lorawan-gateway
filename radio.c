@@ -129,7 +129,28 @@ static void dump_dio()
     fprintf(stderr, "DIO2 = %d\n", digitalRead(PIN_DIO2));
 }
 
-int lora_get_last_packet_coding_rate()
+static void lora_set_rx_timeout(int symbols)
+{
+    assert(symbols >= 0);
+    assert(symbols <= 0x3ff);
+
+    uint8_t val;
+    val = (read_byte(LORARegModemConfig2) & 0xfc) | ((symbols >> 8) & 0x3);
+    write_byte(LORARegModemConfig2, val);
+    write_byte(LORARegSymbTimeoutLsb, (uint8_t)(val & 0xff));
+}
+
+static void lora_set_invert_iq()
+{
+    write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ)|(1<<6));
+}
+
+static void lora_clear_invert_iq()
+{
+    write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) & 0xbf);
+}
+
+static int lora_get_last_packet_coding_rate()
 {
     int cr = (read_byte(LORARegModemStat) >> 5) & 0x07;
     switch (cr)
@@ -143,24 +164,26 @@ int lora_get_last_packet_coding_rate()
     return 0;
 }
 
-int lora_get_last_packet_snr()
+static int lora_get_last_packet_snr()
 {
     return (int8_t)read_byte(LORARegPktSnrValue) >> 2;
 }
 
-int lora_get_last_packet_rssi()
+static int lora_get_last_packet_rssi()
 {
     return -164 + read_byte(LORARegPktRssiValue);
 }
 
+static int lora_get_modem_status()
+{
+    return (read_byte(LORARegModemStat) & 0x1f);
+}
+
+/* Below are exported functions */
+
 int lora_get_current_rssi()
 {
     return -164 + read_byte(LORARegRssiValue);
-}
-
-int lora_get_modem_status()
-{
-    return (read_byte(LORARegModemStat) & 0x1f);
 }
 
 void lora_set_frequency(long freq)
@@ -182,17 +205,6 @@ long lora_get_frequency()
     return (long)frf;
 }
 
-void static lora_set_rx_timeout(int symbols)
-{
-    assert(symbols >= 0);
-    assert(symbols <= 0x3ff);
-
-    uint8_t val;
-    val = (read_byte(LORARegModemConfig2) & 0xfc) | ((symbols >> 8) & 0x3);
-    write_byte(LORARegModemConfig2, val);
-    write_byte(LORARegSymbTimeoutLsb, (uint8_t)(val & 0xff));
-}
-
 void lora_tx(uint8_t *data, uint8_t len)
 {
     uint8_t flags;
@@ -200,6 +212,14 @@ void lora_tx(uint8_t *data, uint8_t len)
 
     fprintf(stderr, "Sending data of %d bytes.\n", len);
     lora_set_opmode(OPMODE_STANDBY);
+
+#ifdef CONFIG_LORA_IS_GATEWAY
+    // set invert I/Q bit
+    lora_set_invert_iq();
+#else
+    // clear invert I/Q bit
+    lora_clear_invert_iq();
+#endif
 
     write_byte(RegDioMapping1, MAP_DIO0_LORA_TXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
     write_byte(LORARegIrqFlags, 0xFF);
@@ -229,13 +249,20 @@ void lora_tx(uint8_t *data, uint8_t len)
 
 // return the length of received packet
 // 0 for timeout
-int lora_rx_single(uint8_t *buf, int timeout_symbols)
+int lora_rx_single(rx_info_t *data, int timeout_symbols)
 {
-    int len;
     int state;
     uint8_t flags;
 
     lora_set_opmode(OPMODE_STANDBY);
+
+    #ifdef CONFIG_LORA_IS_GATEWAY
+        // do NOT invert I and Q when RX on gateway
+        lora_clear_invert_iq();
+    #else
+        // invert I and Q when RX on mote
+        lora_set_invert_iq();
+    #endif
 
     if (timeout_symbols > 0)
     {
@@ -243,7 +270,7 @@ int lora_rx_single(uint8_t *buf, int timeout_symbols)
     }
 
     write_byte(RegLna, LNA_RX_GAIN);
-    write_byte(LORARegPayloadMaxLength, 64);
+    write_byte(LORARegPayloadMaxLength, CONFIG_LORA_MAX_RX_LENGTH);
 
     write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
     // clear flags
@@ -263,25 +290,23 @@ int lora_rx_single(uint8_t *buf, int timeout_symbols)
     flags = read_byte(LORARegIrqFlags);
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
-        len = read_byte(LORARegRxNbBytes);
+        data->len = read_byte(LORARegRxNbBytes);
         // put fifo pointer to last packet
         write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
         // copy to buffer
-        read_fifo(buf, len);
-    }
-    else if (flags & IRQ_LORA_RXTOUT_MASK)
-    {
-        len = 0;
+        read_fifo(data->buf, data->len);
+        data->snr = lora_get_last_packet_snr();
+        data->rssi = lora_get_last_packet_rssi();
+        data->cr = lora_get_last_packet_coding_rate();
     }
     else
     {
-        len = -1;
-        fprintf(stderr, "No RX flags\n");
+        fprintf(stderr, "RX timeout.\n");
+        data->len = 0;
     }
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
-
-    return len;
+    return data->len;
 }
 
 void lora_init()
@@ -298,16 +323,17 @@ void lora_init()
     // while((read_byte(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING)
     write_byte(LORARegIrqFlags, 0xFF);
     write_byte(LORARegIrqFlagsMask, 0xFF);
-    dump_dio();
     fprintf(stderr, "Inited.\n");
 }
 
 
 // always explicit mode, SF >= 7
-int lora_config(int sf, int cr, int bw, int prelen, uint8_t syncword)
+int lora_config(int sf, int cr, int bw)
 {
     uint8_t mc1 = 0;
     uint8_t mc2 = 0;
+    uint8_t mc3 = 0;
+
     fprintf(stderr, "Setting SF=%d, CR=%d, BW=%d, prelen=%d, sync=0x%x\n", sf, cr, bw, prelen, syncword);
     switch (bw)
     {
@@ -336,13 +362,32 @@ int lora_config(int sf, int cr, int bw, int prelen, uint8_t syncword)
     // set mc1 and mc2
     write_byte(LORARegModemConfig1, mc1);
     write_byte(LORARegModemConfig2, mc2);
+    // use auto AGC
+    mc3 = SX1278_MC3_AGCAUTO;
+    if ((sf == 11 || sf == 12) && bw == 125)
+        mc3 |= SX1278_MC3_LOW_DATA_RATE_OPTIMIZE;
+    write_byte(LORARegModemConfig3, mc3);
+
     // set preamble length
-    write_byte(LORARegPreambleMsb, (prelen >> 8) & 0xff);
-    write_byte(LORARegPreambleLsb, (prelen) & 0xff);
+    write_byte(LORARegPreambleMsb, (CONFIG_LORA_PREAMBLE_LENGTH >> 8) & 0xff);
+    write_byte(LORARegPreambleLsb, (CONFIG_LORA_PREAMBLE_LENGTH) & 0xff);
     // set sync word
-    write_byte(LORARegSyncWord, syncword);
-    dump_dio();
+    write_byte(LORARegSyncWord, CONFIG_LORA_SYNC_WORD);
     return 0;
+}
+
+void lora_set_txpower(int txpower)
+{
+    // no boost used for now
+    int8_t pw = (int8_t)txpower;
+    if(pw >= 17) {
+        pw = 15;
+    } else if(pw < 2) {
+        pw = 2;
+    }
+    // check board type for BOOST pin
+    write_byte(RegPaConfig, (uint8_t)(0x80|(pw&0xf)));
+    write_byte(RegPaDac, read_byte(RegPaDac)|0x4);
 }
 
 void lora_cleanup()
@@ -359,7 +404,7 @@ void dump_hex(void *data, int len)
     int i;
     for (i = 0; i < len; i++)
     {
-        printf("%2x", ptr[i]);
+        printf("%02x", ptr[i]);
     }
     printf("\n");
 }
