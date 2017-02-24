@@ -1,6 +1,7 @@
 #include "radio.h"
 #include "wiringPi.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 uint8_t packet[] = {0x5a, 0x0e, 0xfa};
 
