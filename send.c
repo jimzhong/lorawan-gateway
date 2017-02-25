@@ -6,6 +6,7 @@
 uint8_t packet[] = {0x5a, 0x0e, 0xfa};
 
 volatile int running = 1;
+long freq = 436000000;
 
 void stop()
 {
@@ -19,7 +20,9 @@ int main()
 {
     lora_init();
     lora_config(11, 46, 125);
-    lora_set_txpower(15);
+    lora_set_frequency(freq);
+    printf("Freq=%ld\n", lora_get_frequency());
+    lora_set_txpower(17);
     while (running)
     {
         lora_tx(packet, 3);

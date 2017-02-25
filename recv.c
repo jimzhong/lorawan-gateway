@@ -3,6 +3,7 @@
 #include <signal.h>
 
 volatile int stopping = 0;
+long freq = 436000000;
 
 void stop()
 {
@@ -21,7 +22,9 @@ int main()
 
     lora_init();
     lora_config(11, 46, 125);
-
+    lora_set_frequency(freq);
+    lora_set_txpower(10);
+    printf("Freq=%ld\n", lora_get_frequency());
     lora_rx_continuous_start();
 
     while (!stopping)
