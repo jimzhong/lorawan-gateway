@@ -21,7 +21,7 @@ int main()
     signal(SIGINT, stop);
 
     lora_init();
-    lora_config(11, 46, 125);
+    lora_config(8, 46, 250);
     lora_set_frequency(freq);
     lora_set_txpower(10);
     printf("Freq=%ld\n", lora_get_frequency());
