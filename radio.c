@@ -149,13 +149,13 @@ static void lora_set_rx_timeout(int symbols)
 
 static void lora_set_invert_iq()
 {
-    fprintf(stderr, "Set invert.\n");
+    // fprintf(stderr, "Set invert.\n");
     write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) | 0x40);
 }
 
 static void lora_clear_invert_iq()
 {
-    fprintf(stderr, "Clear invert.\n");
+    // fprintf(stderr, "Clear invert.\n");
     write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) & 0xbf);
 }
 
@@ -219,6 +219,8 @@ long lora_get_frequency()
     return (long)frf;
 }
 
+/* send data of len */
+/* !!! data will be modified after SPI transaction !! */
 int lora_tx(uint8_t *data, uint8_t len)
 {
     uint8_t flags;
