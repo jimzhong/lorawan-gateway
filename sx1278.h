@@ -107,11 +107,11 @@
 // #define RegAgcThresh3                              0x46 // common
 // #define RegPllHop                                  0x4B // common
 // #define RegTcxo                                    0x58 // common
-#define RegPaDac                                   0x5A // common
+#define RegPaDac                                   0x4d // common
 // #define RegPll                                     0x5C // common
 // #define RegPllLowPn                                0x5E // common
 // #define RegFormerTemp                              0x6C // common
-// #define RegBitRateFrac                             0x70 // common
+// #define RegBitRateFrac                             0x70 // commom
 
 
 // SX1278 RegModemConfig1

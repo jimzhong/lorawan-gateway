@@ -492,16 +492,17 @@ int lora_config(int sf, int cr, int bw)
 
 void lora_set_txpower(int txpower)
 {
-    // no boost used for now
-    int8_t pw = (int8_t)txpower;
+    // use PA_HP, txpower in [2, 17] dBm range
+    int8_t pw = txpower;
     if(pw >= 17) {
-        pw = 15;
+        pw = 17;
     } else if(pw < 2) {
         pw = 2;
     }
-    // check board type for BOOST pin
-    write_byte(RegPaConfig, (uint8_t)(0x80|(pw&0xf)));
-    write_byte(RegPaDac, read_byte(RegPaDac)|0x4);
+    pw -= 2;
+    // Pout = 17-(15-pw) = pw-2
+    write_byte(RegPaConfig, (uint8_t)(0xF0 | (pw&0xf)));
+    write_byte(RegPaDac, 0x87);
 }
 
 void lora_cleanup()
