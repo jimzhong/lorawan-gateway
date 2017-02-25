@@ -1,11 +1,11 @@
 CC=gcc
 CFLAGS=-c -Wall
-LIBS=-lwiringPi
+LIBS=-lwiringPi -pthread
 
 all: gateway
 
-gateway: radio.o mac.o net.o main.o aes.o
-	$(CC) radio.o mac.o net.o main.o aes.o $(LIBS) -o gateway
+gateway: radio.o main.o
+	$(CC) radio.o main.o $(LIBS) -o gateway
 
 send: send.c radio.o
 	$(CC) radio.o send.c $(LIBS) -o send
@@ -16,18 +16,11 @@ recv: recv.c radio.o
 main.o: main.c
 	$(CC) $(CFLAGS) main.c
 
-mac.o: mac.c
-	$(CC) $(CFLAGS) mac.c
-
-net.o: net.c
-	$(CC) $(CFLAGS) net.c
-
-radio.o: radio.c
+radio.o: radio.c radio.h config.h sx1278.h
 	$(CC) $(CFLAGS) radio.c
 
-aes.o: aes.c
-	$(CC) $(CFLAGS) aes.c
-
 clean:
-	rm *.o
-	rm gateway
+	rm -f *.o
+	rm -f send
+	rm -f recv
+	rm -f gateway
