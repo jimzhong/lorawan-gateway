@@ -27,7 +27,7 @@ int main()
     lora_set_txpower(10);
     while (running)
     {
-        memcpy(buf, packet, 4)
+        memcpy(buf, packet, 4);
         lora_tx(buf, 4);
         delay(1000);
     }
