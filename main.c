@@ -64,8 +64,16 @@ void network_receive_task()
 {
     char buf[BUF_LENGTH];
     int len;
+    while (running)
+    {
         len = recv(sockfd, buf, BUF_LENGTH, 0);
-        printf("Received %d bytes", len);
+        if (len == -1)
+        {
+            perror("recv");
+            continue;
+        }
+        printf("Received %d bytes\n", len);
+    }
 }
 
 void lora_rx_task()
