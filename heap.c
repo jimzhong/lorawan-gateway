@@ -40,12 +40,14 @@ long heap_get_capacity(heap_t *heap)
 void heap_insert(heap_t *heap, long weight, void *data)
 {
     long pos = ++(heap->size);
-    assert(heap->size < heap->capacity);    // abort if heap is full
+    assert(heap->size <= heap->capacity);    // abort if heap is full
     // move down if heavier than weight
-    while (pos > 1 && (heap->elements[pos / 2].weight > weight)) {
+    while (pos > 1 && (heap->elements[pos/2].weight > weight))
+    {
         heap->elements[pos] = heap->elements[pos/2];
         pos /= 2;
     }
+    fprintf(stderr, "Inserted %ld at %ld\n", weight, pos);
     // insert weight at pos
     heap->elements[pos].weight = weight;
     heap->elements[pos].data = data;
