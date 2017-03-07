@@ -15,6 +15,8 @@
 #include "heap.h"
 #include "radio.h"
 
+#define BUF_LENGTH 1024
+
 int volatile running = 1;
 
 pthread_t lora_thread_info;
@@ -60,7 +62,13 @@ int hostname_to_ip(char *hostname , char *ip)
 
 void network_receive_task()
 {
-
+    char buf[1024];
+    int len;
+    while(running)
+    {
+        len = recvfrom(sockfd, buf, BUF_LENGTH, NULL, NULL);
+        printf("Received %d bytes");
+    }
 }
 
 void lora_rx_task()
@@ -69,25 +77,6 @@ void lora_rx_task()
     {
 
     }
-}
-
-
-int main()
-{
-    Heap h;
-    int i;
-    h = heap_alloc(1000);
-    printf("size=%ld\n", heap_get_size(h));
-    printf("cap=%ld\n", heap_get_capacity(h));
-    for (i = 100; i > 0; i--)
-    {
-        heap_insert(h, i, NULL);
-    }
-    while(heap_get_size(h) > 0)
-    {
-        printf("weight = %d\n", heap_pop(h).weight);
-    }
-    return 0;
 }
 
 int main2(int argc, char **argv)
