@@ -4,8 +4,8 @@ LIBS=-lwiringPi -pthread
 
 all: gateway
 
-gateway: radio.o main.o
-	$(CC) radio.o main.o $(LIBS) -o gateway
+gateway: radio.o main.o heap.o
+	$(CC) radio.o main.o heap.o $(LIBS) -o gateway
 
 send: send.c radio.o
 	$(CC) radio.o send.c $(LIBS) -o send
@@ -18,6 +18,9 @@ main.o: main.c
 
 radio.o: radio.c radio.h config.h sx1278.h
 	$(CC) $(CFLAGS) radio.c
+
+heap.o: heap.c heap.h
+	$(CC) $(CFLAGS) heap.c
 
 clean:
 	rm -f *.o

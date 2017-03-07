@@ -296,7 +296,6 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
 
     write_byte(RegLna, CONFIG_LORA_LNA_RX_GAIN);
     write_byte(LORARegPayloadMaxLength, CONFIG_LORA_MAX_RX_LENGTH);
-
     write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
     // clear flags
     write_byte(LORARegIrqFlags, 0xFF);
@@ -343,11 +342,21 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     return data->len;
 }
 
+// global variable to cancel continuous rx mode
+// a nasty patch
+// static int rx_running;
+
 int lora_rx_continuous_start()
 {
     uint8_t mode;
 
     mode = lora_get_opmode();
+    if (mode == OPMODE_RX)
+    {
+        // already in RX continuous mode
+        // do nothing
+        return;
+    }
     assert (mode == OPMODE_STANDBY || mode == OPMODE_SLEEP);
     lora_set_opmode(OPMODE_STANDBY);
 
@@ -376,10 +385,15 @@ int lora_rx_continuous_get(rx_info_t *data)
 {
     uint8_t flags;
 
-    assert(lora_get_opmode() == OPMODE_RX);
+    if (lora_get_opmode() != OPMODE_RX)
+    {
+        fprintf(stderr, "Calling lora_rx_continuous_get() when opmode is not RX\n");
+        return -1;
+    }
+
     fprintf(stderr, "Waiting to get packet.\n");
     // wait for rxdone
-    while (digitalRead(PIN_DIO0) == 0);
+    while ((digitalRead(PIN_DIO0) == 0));
     // check flags
     flags = read_byte(LORARegIrqFlags);
     // timestamp
@@ -406,17 +420,24 @@ int lora_rx_continuous_get(rx_info_t *data)
     }
     else
     {
-        fprintf(stderr, "RX Error.\n");
-        data->len = 0;
+        fprintf(stderr, "RX exited prematurely.\n");
+        data->len = -1;
     }
+    // reset flags
     write_byte(LORARegIrqFlags, 0xFF);
     return data->len;
 }
 
 int lora_rx_continuous_stop()
 {
-    assert(lora_get_opmode() == OPMODE_RX);
+    if (lora_get_opmode() != OPMODE_RX)
+    {
+        fprintf(stderr, "Calling lora_rx_continuous_get() when opmode is not RX\n");
+        return -1;
+    }
+    // reset flags
     write_byte(LORARegIrqFlags, 0xFF);
+    // disable all irqs
     write_byte(LORARegIrqFlagsMask, 0xFF);
     lora_set_opmode(OPMODE_SLEEP);
     return 0;
@@ -505,6 +526,8 @@ void lora_set_txpower(int txpower)
     // Pout = 17-(15-pw) = pw-2
     write_byte(RegPaConfig, (uint8_t)(0xF0 | (pw&0xf)));
     write_byte(RegPaDac, 0x87);
+    // trip current = 200mA
+    write_byte(RegOcp, 0x37);
 }
 
 void lora_cleanup()
