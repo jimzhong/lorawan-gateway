@@ -129,7 +129,9 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    network_receive_task();
+    char buf[BUF_LENGTH];
+    printf("%d\n", recvfrom(sockfd, buf, BUF_LENGTH, 0, NULL, NULL));
+    // network_receive_task();
 
     return 0;
 }
