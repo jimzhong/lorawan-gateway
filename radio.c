@@ -277,8 +277,11 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
 
     mode = lora_get_opmode();
 
-    assert (mode == OPMODE_STANDBY || mode == OPMODE_SLEEP);
-
+    if (mode != OPMODE_STANDBY && mode != OPMODE_SLEEP)
+    {
+        fprintf(stderr, "Cannot switch to rx mode\n");
+        return -1;
+    }
     lora_set_opmode(OPMODE_STANDBY);
 
     #ifdef CONFIG_LORA_IS_GATEWAY
@@ -355,9 +358,13 @@ int lora_rx_continuous_start()
     {
         // already in RX continuous mode
         // do nothing
-        return;
+        return 0;
     }
-    assert (mode == OPMODE_STANDBY || mode == OPMODE_SLEEP);
+    if (mode != OPMODE_STANDBY && mode != OPMODE_SLEEP)
+    {
+        fprintf(stderr, "Cannot switch to rx mode\n");
+        return -1;
+    }
     lora_set_opmode(OPMODE_STANDBY);
 
     #ifdef CONFIG_LORA_IS_GATEWAY
