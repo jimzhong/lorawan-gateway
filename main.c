@@ -79,7 +79,7 @@ void lora_rx_task()
     }
 }
 
-int main2(int argc, char **argv)
+int main(int argc, char **argv)
 {
     int port;
     char server_ip_string[INET_ADDRSTRLEN];
