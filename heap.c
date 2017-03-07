@@ -68,31 +68,29 @@ node_t heap_pop(heap_t *heap)
     long min_child;
     node_t last = heap->elements[heap->size];
 
-    // exchange the last node with the first node
+    // put the popping node to the end
     heap->elements[heap->size] = heap->elements[1];
     heap->size --;
-    heap->elements[1] = last;
 
     for(pos = 1;;)
     {
-        min_child = pos;
-        if ((pos*2 <= heap->size) && (heap->elements[pos*2].weight < heap->elements[min_child].weight))
-        {
-            min_child = pos*2;
-        }
+        min_child = 0;
+        if (pos*2 <= heap->size)
+            min_child = pos * 2;
         if ((pos*2+1 <= heap->size) && (heap->elements[pos*2+1].weight < heap->elements[min_child].weight))
         {
             min_child = pos*2+1;
         }
-        if (min_child != pos)
+        if (min_child > 0 && heap->elements[min_child].weight < last.weight)
         {
             heap->elements[pos] = heap->elements[min_child];
-            heap->elements[min_child] = last;
+            pos = min_child;
         }
         else
         {
             break;
         }
     }
+    heap->elements[pos] = last;
     return heap->elements[heap->size + 1];
 }
