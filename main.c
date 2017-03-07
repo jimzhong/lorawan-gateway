@@ -62,12 +62,12 @@ int hostname_to_ip(char *hostname , char *ip)
 
 void network_receive_task()
 {
-    char buf[1024];
+    char buf[BUF_LENGTH];
     int len;
     while(running)
     {
-        len = recvfrom(sockfd, buf, BUF_LENGTH, NULL, NULL);
-        printf("Received %d bytes");
+        len = recvfrom(sockfd, buf, BUF_LENGTH, BUF_LENGTH, NULL, NULL);
+        printf("Received %d bytes", len);
     }
 }
 
