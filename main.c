@@ -89,7 +89,7 @@ int main(int argc, char **argv)
         printf("Usage: %s hostname port\n", argv[0]);
         exit(-1);
     }
-    sockfd = socket(AF_INET, SOCK_DGRAM|SOCK_NONBLOCK, 0);
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd == -1)
     {
         perror("socket");
