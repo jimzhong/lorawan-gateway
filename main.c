@@ -66,7 +66,9 @@ void network_receive_task()
     int len;
     while(running)
     {
-        len = recvfrom(sockfd, buf, BUF_LENGTH, BUF_LENGTH, NULL, NULL);
+        len = recv(sockfd, buf, BUF_LENGTH, 0);
+        if (len == -1)
+            continue;
         printf("Received %d bytes", len);
     }
 }
