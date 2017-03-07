@@ -127,17 +127,8 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    // lora_init();
-    // lora_config(11, 46, 125);
-    //
-    // for(;;)
-    // {
-    //
-    // }
-    //
-    // pthread_join(&lora_rx_thread_info, NULL);
-    // pthread_join(&lora_tx_thread_info, NULL);
-    // lora_cleanup();
+    network_receive_task();
+
     return 0;
 }
 
