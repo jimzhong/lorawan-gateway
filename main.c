@@ -129,6 +129,8 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
+    network_receive_task();
+
     return 0;
 }
 
