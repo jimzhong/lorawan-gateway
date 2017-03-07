@@ -48,7 +48,7 @@ void heap_insert(heap_t *heap, long weight, void *data)
         heap->elements[pos] = heap->elements[pos/2];
         pos /= 2;
     }
-    fprintf(stderr, "Inserted %ld at %ld\n", weight, pos);
+    fprintf(stdout, "Inserted %ld at %ld\n", weight, pos);
     // insert weight at pos
     heap->elements[pos].weight = weight;
     heap->elements[pos].data = data;
