@@ -95,6 +95,7 @@ int connect_to_server(char *hostname, int port)
 
     // printf("Server at %s:%d\n", server_ip_string, port);
     server_addr.sin_port = htons(port);
+    server_addr.sin_family = AF_INET;
 
     if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1)
     {
