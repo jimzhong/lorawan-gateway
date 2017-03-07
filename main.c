@@ -85,7 +85,7 @@ int main()
     }
     while(heap_get_size(h) > 0)
     {
-        printf("weight = %d\n", heap_pop(h));
+        printf("weight = %d\n", heap_pop(h).weight);
     }
     return 0;
 }
