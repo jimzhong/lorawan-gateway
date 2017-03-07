@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include "heap.h"
+#include <stdio.h>
 
 heap_t * heap_alloc(long capacity)
 {
