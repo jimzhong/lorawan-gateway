@@ -6,7 +6,7 @@
 
 typedef struct
 {
-    long weight;
+    unsigned long weight;
     void *data; //associated data
 } node_t;
 
@@ -22,7 +22,7 @@ heap_t * heap_alloc(long capacity);
 void heap_free(heap_t *heap);
 long heap_get_size(heap_t *heap);
 long heap_get_capacity(heap_t *heap);
-void heap_insert(heap_t *heap, long weight, void *data);
+void heap_insert(heap_t *heap, unsigned long weight, void *data);
 node_t heap_peek(heap_t *heap);
 node_t heap_pop(heap_t *heap);
 

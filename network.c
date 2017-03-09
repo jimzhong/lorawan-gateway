@@ -76,7 +76,7 @@ int connect_to_server(char *hostname, int port)
     struct sockaddr_in server_addr = {};
     char server_ip_string[INET_ADDRSTRLEN];
 
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    sockfd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
     if (sockfd == -1)
     {
         perror("socket");

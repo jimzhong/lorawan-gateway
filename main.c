@@ -3,43 +3,207 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <unistd.h>
-#include <arpa/inet.h>
-#include <netdb.h>
 #include <pthread.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include <time.h>
+#include <assert.h>
+#include <sys/timerfd.h>
+#include <sys/epoll.h>
+
+#include <wiringPi.h>
 
 #include "heap.h"
 #include "radio.h"
 #include "network.h"
 
+#define MAX_EVENTS 32
+#define DEFAULT_CLOCK CLOCK_REALTIME
+
+// BUF_LENGTH must >= sizeof(tx_request_t)
 #define BUF_LENGTH 1024
+#define TX_QUEUE_LENGTH 20
+#define TX_QUEUE_MAX_WAIT_SEC 10
+
+typedef struct
+{
+    int sf;
+    int bw;
+    int cr;
+    int txpower;
+    unsigned long txfreq;
+    struct timespec tp;
+    int len;
+    uint8_t buf[256];
+} tx_request_t;
 
 int volatile running = 1;
-
 int sockfd;
+int timerfd[TX_QUEUE_LENGTH];
+tx_request_t *tx_queue[TX_QUEUE_LENGTH] = {};    // NULL slots are usable
 
+int min(int a, int b)
+{
+    if (a < b)
+        return a;
+    return b;
+}
 
 void exit_handler()
 {
     running = 0;
+    lora_cleanup();
 }
 
-void lora_rx_task()
-{
-    while(running)
-    {
+// void lora_rx_task()
+// {
+//     int len;
+//     rx_info_t data;
+//     while(running)
+//     {
+//         lora_rx_continuous_start();
+//         len = lora_rx_continuous_get(&data);
+//         if (len > 0)
+//         {
+//             send_to_server(sockfd, &data, sizeof(rx_info_t));
+//         }
+//     }
+// }
+//
+// void lora_tx_task()
+// {
+//     char buf[BUF_LENGTH];
+//     int len;
+//
+//     tx_info_t *data;
+//     tx_queue = heap_alloc(TX_QUEUE_LENGTH);
+//
+//     while(running)
+//     {
+//         len = recv_from_server(sockfd, buf, BUF_LENGTH);
+//         if (len > 0)
+//         {
+//             data = malloc(sizeof(tx_info_t));
+//             memcpy(data, buf, min(len, sizeof(tx_info_t)));
+//             if (data->ms < millis() + TX_QUEUE_MAX_WAIT_MS)
+//             {
+//                 printf("Schedule to send %d bytes at %lu\n", data->len, data->ms);
+//                 heap_insert(heap, data->ms, data);
+//             }
+//             else
+//             {
+//                 printf("Ignore tx request at %lu.\n", data->ms);
+//             }
+//         }
+//     }
+//     heap_free(tx_queue);
+// }
 
+// set a timer to expire at tp absolute time
+void timer_set_expire_at(int fd, struct timespec tp)
+{
+    struct itimerspec new_value;
+    new_value.it_value = tp;
+    new_value.it_interval.tv_sec = 0;
+    new_value.it_interval.tv_nsec = 0;
+
+    if (timerfd_settime(fd, TFD_TIMER_ABSTIME, &new_value, NULL) == -1)
+    {
+        perror("timerfd_settime");
+        exit(-1);
     }
 }
 
+void timer_cancel(int fd)
+{
+    struct timespec tp;
+    tp.tv_sec = 0;
+    tp.tv_nsec = 0;
+    timer_set_expire_at(fd, tp);
+}
+
+void epoll_register_readable(int fd)
+{
+    struct epoll_events ev
+    ev.events = EPOLLIN;
+    ev.data.fd = fd;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
+    {
+        perror("epoll_ctl");
+        exit(-1);
+    }
+}
+
+void queue_tx_request(tx_request_t *data)
+{
+    int i;
+    fprintf(stderr, "Queuing a tx request of %d bytes\n", data->len);
+    for (i = 0; i < TX_QUEUE_LENGTH; i++)
+    {
+        if (tx_queue[i] == NULL)    // find the first empty slot
+        {
+            // copy data into new slot
+            tx_queue[i] = malloc(sizeof(tx_request_t));
+            assert(tx_queue[i] != NULL);
+            memmove(tx_queue[i], data, sizeof(tx_request_t));
+            // start the corresponding timer
+            timer_set_expire_at(timerfd[i], data->tp);
+            return;
+        }
+    }
+    // should never reach here
+    fprintf(stderr, "TX queue is full!!!\n");
+}
+
+void handle_timer_expiration(int fd)
+{
+    fprintf(stderr, "Handling expiration of fd %d\n", fd);
+    int i;
+    long old_freq;
+    tx_request_t *data;
+    for (i = 0; i < TX_QUEUE_LENGTH; i++)
+    {
+        if (timerfd[i] == fd)
+        {
+            data = tx_queue[i];
+            timer_cancel(fd);
+            assert(data != NULL);
+            lora_set_standby();
+            // if (data->txpower != 0)
+            // {
+            //     lora_set_txpower(data->txpower);
+            // }
+            // if (data->txfreq != 0)
+            // {
+            //     old_freq = lora_get_frequency();
+            //     lora_set_frequency(data->txfreq);
+            // }
+            // lora_config(tx_queue[i]->sf, tx_queue[i]->cr, tx_queue[i]->bw);
+            lora_tx(data->buf, data->len);
+            fprintf(stderr, "Sent a packet of %d bytes\n", data->len);
+            // if (data->txfreq != 0)
+            // {
+            //     lora_set_frequency(old_freq)
+            // }
+            return;
+        }
+    }
+    // should never reach here
+    fprintf(stderr, "timerfd not found.\n");
+}
+
+
 int main(int argc, char **argv)
 {
+    int i;
     int port;
+    // epoll related argument
+    int nfds;
+    int epfd;
+    struct epoll_events ev, events[MAX_EVENTS];
+    // receive buffer and length
     char buf[BUF_LENGTH];
+    int len;
+    tx_request_t data;
 
     if (argc < 3)
     {
@@ -52,10 +216,57 @@ int main(int argc, char **argv)
         printf("Cannot parse port.\n");
         exit(-1);
     }
-    sockfd = connect_to_server(argv[1], port);
-    send_to_server(sockfd, "123", 3);
-    recv_from_server(sockfd, buf, BUF_LENGTH);
 
+    // initialize socket
+    sockfd = connect_to_server(argv[1], port);
+    // initialize timers for each slot of the tx queue
+    for (i = 0; i < TX_QUEUE_LENGTH; i++)
+    {
+        timerfd[i] = timerfd_create(DEFAULT_CLOCK, 0);
+    }
+
+    epfd = epoll_create1(0);
+    if (epfd == -1)
+    {
+        perror("epoll_create1");
+        exit(-1);
+    }
+    // register sockfd to epoll
+    epoll_register_readable(sockfd)
+    // register timer
+    for (i = 0; i < TX_QUEUE_LENGTH; i++)
+    {
+        epoll_register_readable(timerfd[i]);
+    }
+
+    while(running)
+    {
+        nfds = epoll_wait(epfd, events, MAX_EVENTS, 1000);
+        if (nfds == -1)
+        {
+            perror("epoll_wait");
+            exit(-1);
+        }
+        for (i = 0; i < nfds; i++)
+        {
+            if (events[i].data.fd == sockfd)
+            {
+                len = recv_from_server(sockfd, buf, BUF_LENGTH);
+                if (len > 0)
+                {
+                    memcpy(&data, buf, sizeof(tx_request_t));
+                    queue_tx_request(&data);
+                }
+            }
+            else
+            {
+                // some timer has expired
+                handle_timer_expiration(events[i].data.fd);
+            }
+        }
+    }
+
+    close(sockfd);
     return 0;
 }
 
