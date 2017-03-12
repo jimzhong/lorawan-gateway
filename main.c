@@ -9,6 +9,9 @@
 #include <assert.h>
 #include <sys/timerfd.h>
 #include <sys/epoll.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 #include <wiringPi.h>
 
@@ -73,6 +76,7 @@ PI_THREAD (lora_rx_task)
             usleep(1000);   // if len < 0, rx is canncelled, let tx first
         }
     }
+    return 0;
 }
 
 // set a timer to expire at tp absolute time
