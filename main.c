@@ -30,12 +30,13 @@
 #define TX_QUEUE_LENGTH 20
 #define TX_QUEUE_MAX_DELAY_SEC 5    // how many seconds of delay allowed for a tx request
 
-typedef struct __attribute__((__packed__))
+typedef struct
 {
     uint8_t sf;
     uint8_t cr;
     uint16_t bw;
     uint16_t txpower;
+    uint16_t pad1;
     uint32_t txfreq;
     uint32_t second;
     uint32_t nanosecond;
