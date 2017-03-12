@@ -38,7 +38,6 @@ void nop()
 
 void static pin_init()
 {
-    wiringPiSetup();
     pinMode(PIN_NSS, OUTPUT);
     pinMode(PIN_DIO0, INPUT);
     pinMode(PIN_DIO1, INPUT);
@@ -257,14 +256,19 @@ int lora_get_current_rssi()
     return rssi;
 }
 
-void lora_set_frequency(long freq)
+int lora_set_frequency(long freq)
 {
     uint64_t frf = ((uint64_t)freq << 19) / 32000000;
-    SPI_START_TRANSCATION();
-    write_byte(RegFrfMsb, (uint8_t)(frf>>16));
-    write_byte(RegFrfMid, (uint8_t)(frf>>8));
-    write_byte(RegFrfLsb, (uint8_t)(frf));
-    SPI_END_TRANSCATION();
+    if (freq < 435000000 && freq > 430000000)
+    {
+        SPI_START_TRANSCATION();
+        write_byte(RegFrfMsb, (uint8_t)(frf>>16));
+        write_byte(RegFrfMid, (uint8_t)(frf>>8));
+        write_byte(RegFrfLsb, (uint8_t)(frf));
+        SPI_END_TRANSCATION();
+        return 0;
+    }
+    return -1;
 }
 
 long lora_get_frequency()
@@ -507,25 +511,31 @@ int lora_rx_continuous_stop()
     return 0;
 }
 
-void lora_init()
+int lora_init()
 {
-    fprintf(stderr, "Init...\n");
     pin_init();
 
     piLock(COMMAND_LOCK_NUMBER);
     lora_reset();
-    assert(lora_get_version() == 0x12);
-    lora_set_opmode(OPMODE_SLEEP);
+    if (lora_get_version() == 0x12)
+    {
+        lora_set_opmode(OPMODE_SLEEP);
 
-    // //calibrate
-    // write_byte(RegPaConfig, 0);
-    // write_byte(FSKRegImageCal, (readReg(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_MASK)|RF_IMAGECAL_IMAGECAL_START);
-    // while((read_byte(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING)
-    write_byte(LORARegIrqFlags, 0xFF);
-    write_byte(LORARegIrqFlagsMask, 0xFF);
+        // //calibrate
+        // write_byte(RegPaConfig, 0);
+        // write_byte(FSKRegImageCal, (readReg(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_MASK)|RF_IMAGECAL_IMAGECAL_START);
+        // while((read_byte(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING)
+        // disable all irqs
+        write_byte(LORARegIrqFlags, 0xFF);
+        write_byte(LORARegIrqFlagsMask, 0xFF);
+    }
+    else
+    {
+        return -1;
+    }
 
     piUnlock(COMMAND_LOCK_NUMBER);
-    fprintf(stderr, "Inited.\n");
+    return 0;
 }
 
 
@@ -542,14 +552,18 @@ int lora_config(int sf, int cr, int bw)
         case 125: mc1 |= 0x70; break;
         case 250: mc1 |= 0x80; break;
         case 500: mc1 |= 0x90; break;
-        default: fprintf(stderr, "Unknown BW = %d\n", bw); return -1;
+        default:
+            // fprintf(stderr, "Unknown BW = %d\n", bw);
+            return -1;
     }
     switch (cr) {
         case 45: mc1 |= 0x02; break;
         case 46: mc1 |= 0x04; break;
         case 47: mc1 |= 0x06; break;
         case 48: mc1 |= 0x08; break;
-        default: fprintf(stderr, "Unknown CR = %d\n", cr); return -1;
+        default:
+            // fprintf(stderr, "Unknown CR = %d\n", cr);
+            return -1;
     }
 
 #ifdef CONFIG_LORA_PAYLOAD_CRC
@@ -562,7 +576,8 @@ int lora_config(int sf, int cr, int bw)
     }
     else
     {
-        fprintf(stderr, "Unknown SF = %d\n", sf); return -1;
+        // fprintf(stderr, "Unknown SF = %d\n", sf);
+        return -1;
     }
 
     piLock(COMMAND_LOCK_NUMBER);

@@ -23,7 +23,7 @@ typedef struct
 #define LORA_STATUS_SIGNAL_SYNCED 0x02
 #define LORA_STATUS_SIGNAL_DETECT 0x01
 
-void lora_init();
+int lora_init();
 void lora_cleanup();
 void lora_set_standby();
 void lora_set_sleep();
@@ -36,7 +36,7 @@ int lora_rx_continuous_stop();
 int lora_tx(uint8_t *data, uint8_t len);
 
 int lora_get_current_rssi();
-void lora_set_frequency(long freq);
+int lora_set_frequency(long freq);
 long lora_get_frequency();
 
 void dump_hex(void *data, int len);

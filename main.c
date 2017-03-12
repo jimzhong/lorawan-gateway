@@ -18,11 +18,12 @@
 
 #define MAX_EVENTS 32
 #define DEFAULT_CLOCK CLOCK_REALTIME
+#define RXTX_LOCK_NUMBER 2
 
 // BUF_LENGTH must >= sizeof(tx_request_t)
 #define BUF_LENGTH 1024
 #define TX_QUEUE_LENGTH 20
-#define TX_QUEUE_MAX_WAIT_SEC 10
+#define TX_QUEUE_MAX_DELAY_SEC 5    // how many seconds of delay allowed for a tx request
 
 typedef struct
 {
@@ -54,49 +55,25 @@ void exit_handler()
     lora_cleanup();
 }
 
-// void lora_rx_task()
-// {
-//     int len;
-//     rx_info_t data;
-//     while(running)
-//     {
-//         lora_rx_continuous_start();
-//         len = lora_rx_continuous_get(&data);
-//         if (len > 0)
-//         {
-//             send_to_server(sockfd, &data, sizeof(rx_info_t));
-//         }
-//     }
-// }
-//
-// void lora_tx_task()
-// {
-//     char buf[BUF_LENGTH];
-//     int len;
-//
-//     tx_info_t *data;
-//     tx_queue = heap_alloc(TX_QUEUE_LENGTH);
-//
-//     while(running)
-//     {
-//         len = recv_from_server(sockfd, buf, BUF_LENGTH);
-//         if (len > 0)
-//         {
-//             data = malloc(sizeof(tx_info_t));
-//             memcpy(data, buf, min(len, sizeof(tx_info_t)));
-//             if (data->ms < millis() + TX_QUEUE_MAX_WAIT_MS)
-//             {
-//                 printf("Schedule to send %d bytes at %lu\n", data->len, data->ms);
-//                 heap_insert(heap, data->ms, data);
-//             }
-//             else
-//             {
-//                 printf("Ignore tx request at %lu.\n", data->ms);
-//             }
-//         }
-//     }
-//     heap_free(tx_queue);
-// }
+PI_THREAD (lora_rx_task)
+{
+    int len;
+    rx_info_t data;
+    while(running)
+    {
+        // piLock(RXTX_LOCK_NUMBER);
+        len = lora_rx_continuous(&data);
+        // piUnlock(RXTX_LOCK_NUMBER);
+        if (len > 0)
+        {
+            send_to_server(sockfd, &data, sizeof(rx_info_t));
+        }
+        else
+        {
+            usleep(1000);   // if len < 0, rx is canncelled, let tx first
+        }
+    }
+}
 
 // set a timer to expire at tp absolute time
 void timer_set_expire_at(int fd, struct timespec tp)
@@ -133,7 +110,7 @@ void epoll_register_readable(int fd)
     }
 }
 
-void queue_tx_request(tx_request_t *data)
+void queue_tx_request(void *buf)
 {
     int i;
     fprintf(stderr, "Queuing a tx request of %d bytes\n", data->len);
@@ -144,9 +121,10 @@ void queue_tx_request(tx_request_t *data)
             // copy data into new slot
             tx_queue[i] = malloc(sizeof(tx_request_t));
             assert(tx_queue[i] != NULL);
-            memmove(tx_queue[i], data, sizeof(tx_request_t));
+            memmove(tx_queue[i], buf, sizeof(tx_request_t));
             // start the corresponding timer
             timer_set_expire_at(timerfd[i], data->tp);
+            fprintf(stderr, "Queued a TX request of %d bytes.\n", data->len);
             return;
         }
     }
@@ -156,18 +134,20 @@ void queue_tx_request(tx_request_t *data)
 
 void handle_timer_expiration(int fd)
 {
-    fprintf(stderr, "Handling expiration of fd %d\n", fd);
     int i;
     long old_freq;
     tx_request_t *data;
+
+    fprintf(stderr, "Handling expiration of fd %d\n", fd);
     for (i = 0; i < TX_QUEUE_LENGTH; i++)
     {
         if (timerfd[i] == fd)
         {
             data = tx_queue[i];
+            tx_queue[i] = NULL;
             timer_cancel(fd);
             assert(data != NULL);
-            lora_set_standby();
+            lora_rx_continuous_stop();
             // if (data->txpower != 0)
             // {
             //     lora_set_txpower(data->txpower);
@@ -184,6 +164,7 @@ void handle_timer_expiration(int fd)
             // {
             //     lora_set_frequency(old_freq)
             // }
+            free(data);
             return;
         }
     }
@@ -196,6 +177,8 @@ int main(int argc, char **argv)
 {
     int i;
     int port;
+    int cr, sf, bw;
+    long freq;
     // epoll related argument
     int nfds;
     int epfd;
@@ -205,15 +188,40 @@ int main(int argc, char **argv)
     int len;
     tx_request_t data;
 
-    if (argc < 3)
+    if (argc < 7)
     {
-        printf("Usage: %s hostname port\n", argv[0]);
+        printf("Usage: %s hostname port frequency spreading_factor coding_rate bandwidth\n", argv[0]);
         exit(-1);
     }
+
     port = atoi(argv[2]);
+    freq = atol(argv[3]);
+    sf = atoi(argv[4]);
+    cr = atoi(argv[5]);
+    bw = atoi(argv[6]);
+
+    wiringPiSetup();
+
     if (port == 0)
     {
         printf("Cannot parse port.\n");
+        exit(-1);
+    }
+    if (lora_init() == -1)
+    {
+        printf("SX1278 not found\n");
+        exit(-1);
+    }
+    if (lora_config(sf, cr, bw) == -1)
+    {
+        printf("Wrong sf/cr/bw.\n");
+        lora_cleanup();
+        exit(-1);
+    }
+    if (lora_set_frequency(freq) == -1)
+    {
+        printf("Wrong frequency.\n");
+        lora_cleanup();
         exit(-1);
     }
 
@@ -233,20 +241,28 @@ int main(int argc, char **argv)
     }
     // register sockfd to epoll
     epoll_register_readable(sockfd)
-    // register timer
+    // register timerfds
     for (i = 0; i < TX_QUEUE_LENGTH; i++)
     {
         epoll_register_readable(timerfd[i]);
     }
 
+    if (piThreadCreate(lora_rx_task) != 0)
+    {
+        printf("RX thread creation failed.\n");
+        lora_cleanup();
+        exit(-1);
+    }
+
     while(running)
     {
-        nfds = epoll_wait(epfd, events, MAX_EVENTS, 1000);
+        nfds = epoll_wait(epfd, events, MAX_EVENTS, 200);
         if (nfds == -1)
         {
             perror("epoll_wait");
             exit(-1);
         }
+        fprintf(stderr, "%d fds are ready\n", nfds);
         for (i = 0; i < nfds; i++)
         {
             if (events[i].data.fd == sockfd)
@@ -254,8 +270,7 @@ int main(int argc, char **argv)
                 len = recv_from_server(sockfd, buf, BUF_LENGTH);
                 if (len > 0)
                 {
-                    memcpy(&data, buf, sizeof(tx_request_t));
-                    queue_tx_request(&data);
+                    queue_tx_request(buf);
                 }
             }
             else
@@ -266,6 +281,7 @@ int main(int argc, char **argv)
         }
     }
 
+    close(epfd);
     close(sockfd);
     return 0;
 }
