@@ -117,7 +117,6 @@ void epoll_register_readable(int epfd, int fd)
 void queue_tx_request(tx_request_t *req)
 {
     int i;
-    fprintf(stderr, "Queuing a tx request of %d bytes\n", data->len);
     for (i = 0; i < TX_QUEUE_LENGTH; i++)
     {
         if (tx_queue[i] == NULL)    // find the first empty slot
