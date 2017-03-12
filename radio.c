@@ -289,6 +289,7 @@ int lora_tx(uint8_t *data, uint8_t len)
     int state;
 
     // fprintf(stderr, "Sending data of %d bytes.\n", len);
+    piLock(COMMAND_LOCK_NUMBER);
     lora_set_opmode(OPMODE_STANDBY);
 
 #ifdef CONFIG_LORA_IS_GATEWAY
@@ -322,6 +323,8 @@ int lora_tx(uint8_t *data, uint8_t len)
     assert(flags & IRQ_LORA_TXDONE_MASK);
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
+
+    piUnlock(COMMAND_LOCK_NUMBER);
     // fprintf(stderr, "Data sent\n");
 
     return 0;
@@ -335,11 +338,14 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     uint8_t flags;
     uint8_t mode;
 
+    piLock(COMMAND_LOCK_NUMBER);
+
     mode = lora_get_opmode();
 
     if (mode != OPMODE_STANDBY && mode != OPMODE_SLEEP)
     {
         fprintf(stderr, "Cannot switch to rx mode\n");
+        piUnlock(COMMAND_LOCK_NUMBER);
         return -1;
     }
     lora_set_opmode(OPMODE_STANDBY);
@@ -402,6 +408,7 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     }
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
+    piUnlock(COMMAND_LOCK_NUMBER);
     return data->len;
 }
 
