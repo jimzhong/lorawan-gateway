@@ -128,7 +128,7 @@ void queue_tx_request(tx_request_t *req)
             memmove(tx_queue[i], req, sizeof(tx_request_t));
             // start the corresponding timer
             timer_set_expire_at(timerfd[i], req->tp);
-            fprintf(stderr, "Queued a TX request of %d bytes.\n", data->len);
+            fprintf(stderr, "Queued a TX request of %d bytes.\n", req->len);
             return;
         }
     }
@@ -273,7 +273,7 @@ int main(int argc, char **argv)
                 len = recv_from_server(sockfd, buf, BUF_LENGTH);
                 if (len > 0)
                 {
-                    queue_tx_request(buf);
+                    queue_tx_request((tx_request_t *)buf);
                 }
             }
             else
