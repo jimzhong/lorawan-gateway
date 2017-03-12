@@ -104,7 +104,7 @@ void timer_cancel(int fd)
 
 void epoll_register_readable(int fd)
 {
-    struct epoll_events ev
+    struct epoll_events ev;
     ev.events = EPOLLIN;
     ev.data.fd = fd;
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
@@ -114,7 +114,7 @@ void epoll_register_readable(int fd)
     }
 }
 
-void queue_tx_request(void *buf)
+void queue_tx_request(tx_info_t *req)
 {
     int i;
     fprintf(stderr, "Queuing a tx request of %d bytes\n", data->len);
@@ -125,9 +125,9 @@ void queue_tx_request(void *buf)
             // copy data into new slot
             tx_queue[i] = malloc(sizeof(tx_request_t));
             assert(tx_queue[i] != NULL);
-            memmove(tx_queue[i], buf, sizeof(tx_request_t));
+            memmove(tx_queue[i], req, sizeof(tx_request_t));
             // start the corresponding timer
-            timer_set_expire_at(timerfd[i], data->tp);
+            timer_set_expire_at(timerfd[i], req->tp);
             fprintf(stderr, "Queued a TX request of %d bytes.\n", data->len);
             return;
         }
@@ -186,7 +186,8 @@ int main(int argc, char **argv)
     // epoll related argument
     int nfds;
     int epfd;
-    struct epoll_events ev, events[MAX_EVENTS];
+    struct epoll_events ev;
+    struct epoll_events events[MAX_EVENTS];
     // receive buffer and length
     char buf[BUF_LENGTH];
     int len;
@@ -244,7 +245,7 @@ int main(int argc, char **argv)
         exit(-1);
     }
     // register sockfd to epoll
-    epoll_register_readable(sockfd)
+    epoll_register_readable(sockfd);
     // register timerfds
     for (i = 0; i < TX_QUEUE_LENGTH; i++)
     {
