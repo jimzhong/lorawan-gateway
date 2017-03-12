@@ -13,7 +13,7 @@ typedef struct
     uint32_t freq;
     int16_t snr;
     int16_t rssi;
-    uint64_t second;
+    uint32_t second;
     uint32_t nanosecond;
     uint8_t len;
     uint8_t buf[256];

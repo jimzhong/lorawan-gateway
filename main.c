@@ -126,14 +126,14 @@ void queue_tx_request(tx_request_t *req)
         if (tx_queue[i] == NULL)    // find the first empty slot
         {
             // copy data into new slot
-            // tx_queue[i] = malloc(sizeof(tx_request_t));
-            // assert(tx_queue[i] != NULL);
-            // memmove(tx_queue[i], req, sizeof(tx_request_t));
+            tx_queue[i] = malloc(sizeof(tx_request_t));
+            assert(tx_queue[i] != NULL);
+            memmove(tx_queue[i], req, sizeof(tx_request_t));
             // start the corresponding timer
             fprintf(stderr, "TX Request: SF=%u,CR=%u,BW=%u,TXP=%u,FREQ=%u,SEC=%u,NS=%u,LEN=%u\n", \
                 req->sf, req->cr, req->bw, req->txpower, req->txfreq, req->second, req->nanosecond, req->len);
-            // timer_set_expire_at(timerfd[i], req->second, req->nanosecond);
-            // fprintf(stderr, "Queued a TX request of %d bytes.\n", req->len);
+            timer_set_expire_at(timerfd[i], req->second, req->nanosecond);
+            fprintf(stderr, "Queued a TX request of %d bytes.\n", req->len);
             return;
         }
     }
