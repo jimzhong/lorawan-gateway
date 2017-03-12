@@ -497,6 +497,7 @@ int lora_rx_continuous_stop()
     rx_running = 0;
     piLock(COMMAND_LOCK_NUMBER);
     piUnlock(COMMAND_LOCK_NUMBER);
+    return 0;
 }
 
 void lora_init()
