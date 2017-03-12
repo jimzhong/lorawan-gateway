@@ -408,7 +408,7 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
 
 static int volatile rx_running;
 
-int lora_rx_continuous()
+int lora_rx_continuous(rx_info_t *data)
 {
     uint8_t mode;
     uint8_t flags;
