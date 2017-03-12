@@ -123,13 +123,6 @@ static uint8_t lora_get_version()
     return ver;
 }
 
-static void lora_set_opmode(uint8_t opmode)
-{
-    SPI_START_TRANSCATION();
-    write_byte(RegOpMode, opmode | OPMODE_LORA | OPMODE_LOWFREQON);
-    SPI_END_TRANSCATION();
-}
-
 static uint8_t lora_get_opmode()
 {
     uint8_t mode;
@@ -137,6 +130,17 @@ static uint8_t lora_get_opmode()
     mode = read_byte(RegOpMode) & OPMODE_MASK;
     SPI_END_TRANSCATION();
     return mode;
+}
+
+static void lora_set_opmode(uint8_t opmode)
+{
+    SPI_START_TRANSCATION();
+    write_byte(RegOpMode, opmode | OPMODE_LORA | OPMODE_LOWFREQON);
+    while ((lora_get_opmode() & opmode) == 0)
+    {
+        usleep(100);
+    }
+    SPI_END_TRANSCATION();
 }
 
 static void dump_dio()
@@ -525,7 +529,7 @@ int lora_rx_continuous(rx_info_t *data)
         write_byte(LORARegIrqFlagsMask, 0xFF);
         rx_running = 0;
         fprintf(stderr, "RX exited prematurely.\n");
-        data->len = -1;
+        data->len = 0;
     }
     piUnlock(COMMAND_LOCK_NUMBER);
     return data->len;
