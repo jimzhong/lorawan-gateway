@@ -338,6 +338,7 @@ int lora_tx(uint8_t *data, uint8_t len)
     write_byte(LORARegPayloadLength, len);
 
     write_fifo(data, len);
+    fprintf(stderr, "before TX IRQ=%x\n", read_byte(LORARegIrqFlags));
     // dump_dio();
 
     lora_set_opmode(OPMODE_TX); //start sending here
@@ -352,6 +353,8 @@ int lora_tx(uint8_t *data, uint8_t len)
     assert(flags & IRQ_LORA_TXDONE_MASK);
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
+
+    fprintf(stderr, "after TX IRQ=%x\n", read_byte(LORARegIrqFlags));
 
     piUnlock(COMMAND_LOCK_NUMBER);
     // fprintf(stderr, "Data sent\n");
