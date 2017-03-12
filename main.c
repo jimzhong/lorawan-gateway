@@ -104,7 +104,7 @@ void timer_cancel(int fd)
 
 void epoll_register_readable(int epfd, int fd)
 {
-    struct epoll_events ev;
+    struct epoll_event ev;
     ev.events = EPOLLIN;
     ev.data.fd = fd;
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
@@ -186,7 +186,7 @@ int main(int argc, char **argv)
     // epoll related argument
     int nfds;
     int epfd;
-    struct epoll_events events[MAX_EVENTS];
+    struct epoll_event events[MAX_EVENTS];
     // receive buffer and length
     char buf[BUF_LENGTH];
     int len;
