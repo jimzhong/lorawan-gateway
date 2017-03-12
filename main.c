@@ -90,6 +90,8 @@ void timer_set_expire_at(int fd, long second, long nanosecond)
     new_value.it_interval.tv_sec = 0;
     new_value.it_interval.tv_nsec = 0;
 
+    fprintf(stderr, "Setting fd %d to expire at %ld.%ld\n", fd, second, nanosecond);
+
     if (timerfd_settime(fd, TFD_TIMER_ABSTIME, &new_value, NULL) == -1)
     {
         perror("timerfd_settime");
