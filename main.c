@@ -102,7 +102,7 @@ void timer_cancel(int fd)
     timer_set_expire_at(fd, tp);
 }
 
-void epoll_register_readable(int fd)
+void epoll_register_readable(int epfd, int fd)
 {
     struct epoll_events ev;
     ev.events = EPOLLIN;
@@ -114,7 +114,7 @@ void epoll_register_readable(int fd)
     }
 }
 
-void queue_tx_request(tx_info_t *req)
+void queue_tx_request(tx_request_t *req)
 {
     int i;
     fprintf(stderr, "Queuing a tx request of %d bytes\n", data->len);
@@ -186,12 +186,10 @@ int main(int argc, char **argv)
     // epoll related argument
     int nfds;
     int epfd;
-    struct epoll_events ev;
     struct epoll_events events[MAX_EVENTS];
     // receive buffer and length
     char buf[BUF_LENGTH];
     int len;
-    tx_request_t data;
 
     if (argc < 7)
     {
@@ -245,11 +243,11 @@ int main(int argc, char **argv)
         exit(-1);
     }
     // register sockfd to epoll
-    epoll_register_readable(sockfd);
+    epoll_register_readable(epfd, sockfd);
     // register timerfds
     for (i = 0; i < TX_QUEUE_LENGTH; i++)
     {
-        epoll_register_readable(timerfd[i]);
+        epoll_register_readable(epfd, timerfd[i]);
     }
 
     if (piThreadCreate(lora_rx_task) != 0)
