@@ -4,8 +4,8 @@ LIBS=-lwiringPi -pthread
 
 all: gateway
 
-gateway: radio.o main.o heap.o network.o
-	$(CC) radio.o main.o heap.o network.o $(LIBS) -o gateway
+gateway: radio.o main.o network.o
+	$(CC) radio.o main.o network.o $(LIBS) -o gateway
 
 send: send.c radio.o
 	$(CC) radio.o send.c $(LIBS) -o send
