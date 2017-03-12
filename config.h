@@ -19,4 +19,6 @@
 #define SPI_FREQ    500000
 #define SPI_CHANNEL 0
 
+#define COMMAND_LOCK_NUMBER 3   // which wiringPi lock number for high level commands
+
 #endif
