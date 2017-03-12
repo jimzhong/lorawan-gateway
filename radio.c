@@ -11,8 +11,11 @@
 #include "sx1278.h"
 #include "config.h"
 
-#define SPI_START_TRANSCATION() nop()
-#define SPI_END_TRANSCATION()   nop()
+#define SPI_START_TRANSCATION() while(0)
+#define SPI_END_TRANSCATION()   while(0)
+
+#define select_chip()   digitalWrite(PIN_NSS, LOW);
+#define unselect_chip()    digitalWrite(PIN_NSS, HIGH);
 
 static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMsb", \
 "RegFrfMid", "RegFrfLsb", "RegPaConfig", "RegPaRamp", "RegOcp", "RegLna", \
@@ -30,11 +33,6 @@ static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "R
 "LORARegSyncWord", "FSKRegTimer2Coef", "FSKRegImageCal", "N/A", "N/A", "N/A", "N/A", \
 "RegDioMapping1", "RegDioMapping2", "RegVersion"};
 
-
-void nop()
-{
-    // nop function
-}
 
 void static pin_init()
 {
@@ -57,15 +55,6 @@ void static pin_cleanup()
     pinMode(PIN_RST, INPUT);
 }
 
-void static select_chip()
-{
-    digitalWrite(PIN_NSS, LOW);
-}
-
-void static unselect_chip()
-{
-    digitalWrite(PIN_NSS, HIGH);
-}
 
 uint8_t static read_byte(uint8_t addr)
 {
@@ -78,7 +67,6 @@ uint8_t static read_byte(uint8_t addr)
     unselect_chip();
 
     // fprintf(stderr, "Read 0x%x from %s\n", spibuf[1], regname[addr]);
-
     return spibuf[1];
 }
 
@@ -275,11 +263,11 @@ long lora_get_frequency()
 {
     long long frf = 0;
 
-    SPI_START_TRANSCATION();
+    piLock(COMMAND_LOCK_NUMBER);
     frf = read_byte(RegFrfLsb);
     frf |= ((long)read_byte(RegFrfMid) << 8);
     frf |= ((long)read_byte(RegFrfMsb) << 16);
-    SPI_END_TRANSCATION();
+    piUnlock(COMMAND_LOCK_NUMBER);
 
     frf = (frf * 32000000) >> 19;
     return (long)frf;
@@ -345,10 +333,9 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     piLock(COMMAND_LOCK_NUMBER);
 
     mode = lora_get_opmode();
-
     if (mode != OPMODE_STANDBY && mode != OPMODE_SLEEP)
     {
-        fprintf(stderr, "Cannot switch to rx mode\n");
+        fprintf(stderr, "Cannot switch to rx singal mode\n");
         piUnlock(COMMAND_LOCK_NUMBER);
         return -1;
     }
@@ -621,9 +608,11 @@ void lora_set_txpower(int txpower)
 
 void lora_cleanup()
 {
-    fprintf(stderr, "Cleaning up SX1278.\n");
+    // fprintf(stderr, "Cleaning up SX1278.\n");
+    piLock(COMMAND_LOCK_NUMBER);
     lora_set_opmode(OPMODE_SLEEP);
     pin_cleanup();
+    piLock(COMMAND_LOCK_NUMBER);
 }
 
 void lora_set_standby()
