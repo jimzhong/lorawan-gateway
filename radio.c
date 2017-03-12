@@ -134,12 +134,13 @@ static uint8_t lora_get_opmode()
 
 static void lora_set_opmode(uint8_t opmode)
 {
+    opmode |= (OPMODE_LORA | OPMODE_LOWFREQON);
     SPI_START_TRANSCATION();
-    write_byte(RegOpMode, opmode | OPMODE_LORA | OPMODE_LOWFREQON);
-    // while ((lora_get_opmode() & opmode) == 0)
-    // {
-    //     usleep(100);
-    // }
+    write_byte(RegOpMode, opmode);
+    while ((read_byte(RegOpMode) != opmode)
+    {
+        usleep(10);
+    }
     SPI_END_TRANSCATION();
 }
 
