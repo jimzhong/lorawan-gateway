@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <arpa/inet.h>
 
 #include <wiringPi.h>
 
@@ -29,7 +30,7 @@
 #define TX_QUEUE_LENGTH 20
 #define TX_QUEUE_MAX_DELAY_SEC 5    // how many seconds of delay allowed for a tx request
 
-typedef struct
+typedef struct __attribute__((__packed__))
 {
     uint8_t sf;
     uint8_t cr;
