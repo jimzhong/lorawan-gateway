@@ -31,13 +31,14 @@
 
 typedef struct
 {
-    int sf;
-    int bw;
-    int cr;
-    int txpower;
-    unsigned long txfreq;
-    struct timespec tp;
-    int len;
+    uint8_t sf;
+    uint8_t cr;
+    uint16_t bw;
+    uint16_t txpower;
+    uint32_t txfreq;
+    uint64_t second;
+    uint32_t nanosecond;
+    uint8_t len;
     uint8_t buf[256];
 } tx_request_t;
 
@@ -81,10 +82,11 @@ PI_THREAD (lora_rx_task)
 }
 
 // set a timer to expire at tp absolute time
-void timer_set_expire_at(int fd, struct timespec tp)
+void timer_set_expire_at(int fd, long second, long nanosecond)
 {
     struct itimerspec new_value;
-    new_value.it_value = tp;
+    new_value.it_value.tv_sec = second;
+    new_value.it_value.tv_nsec = nanosecond;
     new_value.it_interval.tv_sec = 0;
     new_value.it_interval.tv_nsec = 0;
 
@@ -97,10 +99,7 @@ void timer_set_expire_at(int fd, struct timespec tp)
 
 void timer_cancel(int fd)
 {
-    struct timespec tp;
-    tp.tv_sec = 0;
-    tp.tv_nsec = 0;
-    timer_set_expire_at(fd, tp);
+    timer_set_expire_at(fd, 0, 0);
 }
 
 void epoll_register_readable(int epfd, int fd)
@@ -127,7 +126,7 @@ void queue_tx_request(tx_request_t *req)
             assert(tx_queue[i] != NULL);
             memmove(tx_queue[i], req, sizeof(tx_request_t));
             // start the corresponding timer
-            timer_set_expire_at(timerfd[i], req->tp);
+            timer_set_expire_at(timerfd[i], req->second, req->nanosecond);
             fprintf(stderr, "Queued a TX request of %d bytes.\n", req->len);
             return;
         }
