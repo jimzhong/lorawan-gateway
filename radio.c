@@ -233,6 +233,41 @@ static int lora_get_last_packet_crc()
     return crc;
 }
 
+// fill rx_info_t with current configuration and time
+static int fill_rx_info_t(rx_info_t *data)
+{
+    uint8_t mc1, mc2;
+    long long frf = 0;
+    struct timespec tv;
+
+    frf = read_byte(RegFrfLsb);
+    frf |= ((long)read_byte(RegFrfMid) << 8);
+    frf |= ((long)read_byte(RegFrfMsb) << 16);
+    data->freq = (frf * 32000000) >> 19;    // full freq
+
+    mc1 = read_byte(LORARegModemConfig1);
+    mc2 = read_byte(LORARegModemConfig2);
+    // mc3 = read_byte(LORARegModemConfig3);
+
+    // fill bw
+    switch(mc1 & 0xf0)
+    {
+        case 0x70: data->bw = 125; break;
+        case 0x80: data->bw = 250; break;
+        case 0x90: data->bw = 500; break;
+        default: return -1;
+    }
+
+    // fill sf
+    data->sf = (mc2 & 0xf0) >> 4;
+    clock_gettime(CLOCK_REALTIME, &tv);
+
+    // fill second and nanosecond
+    data->second = tv.tv_sec;
+    data->nanosecond = tv.tv_nsec;
+    return 0;
+}
+
 /* Below are exported functions */
 
 int lora_get_current_rssi()
@@ -249,11 +284,13 @@ int lora_set_frequency(long freq)
     uint64_t frf = ((uint64_t)freq << 19) / 32000000;
     if (freq < 435000000 && freq > 430000000)
     {
+        piLock(COMMAND_LOCK_NUMBER);
         SPI_START_TRANSCATION();
         write_byte(RegFrfMsb, (uint8_t)(frf>>16));
         write_byte(RegFrfMid, (uint8_t)(frf>>8));
         write_byte(RegFrfLsb, (uint8_t)(frf));
         SPI_END_TRANSCATION();
+        piUnlock(COMMAND_LOCK_NUMBER);
         return 0;
     }
     return -1;
@@ -370,8 +407,8 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols)
     while(state == 0);
     // check flags
     flags = read_byte(LORARegIrqFlags);
-    // timestamp
-    clock_gettime(CLOCK_REALTIME, &(data->tp));
+    // fill rx_info_t with bw, sf, freq, second, nanosecond
+    fill_rx_info_t(data);
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
         data->snr = lora_get_last_packet_snr();
@@ -452,8 +489,8 @@ int lora_rx_continuous(rx_info_t *data)
     }
     // check flags
     flags = read_byte(LORARegIrqFlags);
-    // take down the time
-    clock_gettime(CLOCK_REALTIME, &(data->tp));
+    // fill rx_info_t with bw, sf, freq, second, nanosecond
+    fill_rx_info_t(data);
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
         // if rxdone

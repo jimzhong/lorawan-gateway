@@ -7,14 +7,17 @@
 
 typedef struct
 {
-    int snr;
-    int rssi;
-    int cr;
-    struct timespec tp;
-    int len;
+    uint8_t sf;
+    uint8_t cr;
+    uint16_t bw;
+    uint32_t freq;
+    int16_t snr;
+    int16_t rssi;
+    uint64_t second;
+    uint32_t nanosecond;
+    uint8_t len;
     uint8_t buf[256];
 } rx_info_t;
-
 
 
 #define LORA_STATUS_CLEAR         0x10
