@@ -489,6 +489,7 @@ int lora_rx_continuous(rx_info_t *data)
     }
     // check flags
     flags = read_byte(LORARegIrqFlags);
+    fprintf(stderr, "IRQ=%x\n", flags);
     // fill rx_info_t with bw, sf, freq, second, nanosecond
     fill_rx_info_t(data);
     if (flags & IRQ_LORA_RXDONE_MASK)
