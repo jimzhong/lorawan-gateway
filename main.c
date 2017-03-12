@@ -36,7 +36,7 @@ typedef struct
     uint16_t bw;
     uint16_t txpower;
     uint32_t txfreq;
-    uint64_t second;
+    uint32_t second;
     uint32_t nanosecond;
     uint8_t len;
     uint8_t buf[256];
@@ -128,7 +128,7 @@ void queue_tx_request(tx_request_t *req)
             // assert(tx_queue[i] != NULL);
             // memmove(tx_queue[i], req, sizeof(tx_request_t));
             // start the corresponding timer
-            fprintf(stderr, "TX Request: SF=%u,CR=%u,BW=%u,TXP=%u\n,FREQ=%lu,SEC=%llu,NS=%lu,LEN=%u", \
+            fprintf(stderr, "TX Request: SF=%u,CR=%u,BW=%u,TXP=%u\n,FREQ=%lu,SEC=%llu,NS=%lu,LEN=%u\n", \
                 req->sf, req->cr, req->bw, req->txpower, req->txfreq, req->second, req->nanosecond, req->len);
             // timer_set_expire_at(timerfd[i], req->second, req->nanosecond);
             // fprintf(stderr, "Queued a TX request of %d bytes.\n", req->len);
