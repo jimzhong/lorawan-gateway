@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <singal.h>
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -52,10 +53,10 @@ int min(int a, int b)
     return b;
 }
 
-void exit_handler()
+void exit_handler(int signum)
 {
+    printf("Received signal %d\n", signum);
     running = 0;
-    lora_cleanup();
 }
 
 PI_THREAD (lora_rx_task)
@@ -176,6 +177,14 @@ void handle_timer_expiration(int fd)
 }
 
 
+void register_signal_handler()
+{
+    struct sigaction act;
+    sigaction(SIGINT, NULL, &act);
+    act.sa_handler = exit_handler;
+    sigaction(SIGINT, &act, NULL);
+}
+
 int main(int argc, char **argv)
 {
     int i;
@@ -226,6 +235,7 @@ int main(int argc, char **argv)
         lora_cleanup();
         exit(-1);
     }
+    register_signal_handler();
 
     // initialize socket
     sockfd = connect_to_server(argv[1], port);
@@ -264,7 +274,7 @@ int main(int argc, char **argv)
             perror("epoll_wait");
             exit(-1);
         }
-        fprintf(stderr, "%d fds are ready\n", nfds);
+        // fprintf(stderr, "%d fds are ready\n", nfds);
         for (i = 0; i < nfds; i++)
         {
             if (events[i].data.fd == sockfd)
@@ -282,7 +292,7 @@ int main(int argc, char **argv)
             }
         }
     }
-
+    lora_cleanup();
     close(epfd);
     close(sockfd);
     return 0;
