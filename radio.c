@@ -132,6 +132,8 @@ static uint8_t lora_get_opmode()
     return mode;
 }
 
+
+// TODO: remove busy waiting
 static void lora_set_opmode(uint8_t opmode)
 {
     opmode |= (OPMODE_LORA | OPMODE_LOWFREQON);
