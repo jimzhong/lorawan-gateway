@@ -30,7 +30,7 @@ int main()
         }
         else
         {
-            printf("No packet.\n");
+            //printf("No packet.\n");
         }
     }
 }
