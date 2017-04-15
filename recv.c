@@ -34,7 +34,7 @@ int main()
     }
 }
 
-
+/*
 int main2()
 {
     rx_info_t data;
@@ -58,3 +58,4 @@ int main2()
 
     return 0;
 }
+*/
