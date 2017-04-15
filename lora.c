@@ -154,7 +154,7 @@ int lora_begin(long frequency)
 void lora_end()
 {
   // put in sleep mode
-  sleep();
+  lora_sleep();
 }
 
 int lora_beginPacket()
