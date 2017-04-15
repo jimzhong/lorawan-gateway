@@ -6,41 +6,6 @@
 volatile int stopping = 0;
 long freq = 434000000L;
 
-/*
-int main()
-{
-    int size;
-    if (!lora_begin(freq))
-    {
-        printf("Error");
-        return 1;
-    }
-    lora_setSignalBandwidth(250000);
-    lora_setSyncWord(0x12);
-    lora_setSpreadingFactor(7);
-    lora_setPreambleLength(8);
-    lora_setCodingRate4(5);
-
-    for(;;)
-    {
-        size = lora_parsePacket();
-        if (size > 0)
-        {
-            printf("Received packet.\n");
-            while (lora_available())
-            {
-                printf("%c", lora_read());
-            }
-            printf("\nRSSI=%d\n", lora_packetRssi());
-        }
-        else
-        {
-            //printf("No packet.\n");
-        }
-    }
-}
-*/
-
 
 int main()
 {
@@ -58,6 +23,8 @@ int main()
     // printf("Freq set\n");
     lora_set_txpower(15);
     printf("Freq=%ld\n", lora_get_frequency());
+
+    for(;;);
 
     while (1)
     {
