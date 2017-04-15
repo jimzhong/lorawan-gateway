@@ -357,13 +357,12 @@ void lora_setSignalBandwidth(long sbw)
 {
     int bw;
 
-    if (sbw <= 125000) {
+    if (sbw <= 125000)
         bw = 7;
-    else if (sbw <= 250000) {
+    else if (sbw <= 250000)
         bw = 8;
-    else /*if (sbw <= 250E3)*/ {
+    else /*if (sbw <= 250E3)*/
         bw = 9;
-    }
 
     writeRegister(REG_MODEM_CONFIG_1, (readRegister(REG_MODEM_CONFIG_1) & 0x0f) | (bw << 4));
 }
