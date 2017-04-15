@@ -3,17 +3,39 @@
 #include <signal.h>
 
 volatile int stopping = 0;
-long freq = 436000000;
+long freq = 436000000L;
 
 void stop()
 {
-    lora_rx_continuous_stop();
-    lora_cleanup();
+    lora_end();
     exit(0);
 }
 
-
 int main()
+{
+    int size;
+    lora_begin(freq);
+    for(;;)
+    {
+        size = lora_parsePacket();
+        if (size > 0)
+        {
+            printf("Received packet.\n");
+            while (lora_available())
+            {
+                printf("%c", lora_read());
+            }
+            printf("\nRSSI=%d\n", lora_packetRssi());
+        }
+        else
+        {
+            printf("No packet.\n");
+        }
+    }
+}
+
+
+int main2()
 {
     rx_info_t data;
     int len;
