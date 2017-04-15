@@ -48,7 +48,10 @@ int main()
     int len;
 
     // signal(SIGINT, stop);
-    lora_init();
+    if(!lora_init()){
+        printf("Error\n");
+        return 1;
+    }
     printf("Inited\n");
     lora_config(7, 45, 250, 8, 0x12, 0);
     lora_set_frequency(freq);

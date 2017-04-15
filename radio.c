@@ -570,6 +570,7 @@ int lora_init()
     }
     else
     {
+        piUnlock(COMMAND_LOCK_NUMBER);
         return -1;
     }
 
