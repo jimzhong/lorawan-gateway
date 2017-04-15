@@ -10,8 +10,8 @@ gateway: radio.o main.o network.o
 send: send.c radio.o
 	$(CC) radio.o send.c $(LIBS) -o send
 
-recv: recv.c radio.o
-	$(CC) radio.o recv.c $(LIBS) -o recv
+recv: recv.c lora.o
+	$(CC) lora.o recv.c $(LIBS) -o recv
 
 main.o: main.c
 	$(CC) $(CFLAGS) main.c
@@ -30,3 +30,6 @@ clean:
 	rm -f send
 	rm -f recv
 	rm -f gateway
+
+lora: lora.c lora.h
+	$(CC) $(CFLAGS) network.c
