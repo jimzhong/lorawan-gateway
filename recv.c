@@ -4,7 +4,7 @@
 #include <signal.h>
 
 volatile int stopping = 0;
-long freq = 436000000L;
+long freq = 434000000L;
 
 /*
 int main()
@@ -53,7 +53,7 @@ int main()
         return 1;
     }
     printf("Inited\n");
-    lora_config(7, 45, 250, 8, 0x12, 0);
+    lora_config(7, 45, 250, 6, 0x12, 0);
     lora_set_frequency(freq);
     printf("Freq set\n");
     lora_set_txpower(10);
