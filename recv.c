@@ -52,7 +52,7 @@ int main()
     printf("Inited\n");
     lora_config(7, 45, 250, 8, 0x12, 0);
     lora_set_frequency(freq);
-    printf("Freq set");
+    printf("Freq set\n");
     lora_set_txpower(10);
     printf("Freq=%ld\n", lora_get_frequency());
 
