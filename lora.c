@@ -295,9 +295,9 @@ void lora_flush()
 {
 }
 
-void lora_receive(int size)
+void lora_receive()
 {
-  explicitHeaderMode();
+  lora_explicitHeaderMode();
   writeRegister(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
 }
 
@@ -311,7 +311,7 @@ void lora_sleep()
   writeRegister(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP);
 }
 
-void lora_setTxPower(int level, int outputPin)
+void lora_setTxPower(int level)
 {
     if (level < 2) {
       level = 2;
