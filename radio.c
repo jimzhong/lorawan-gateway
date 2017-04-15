@@ -309,6 +309,7 @@ long lora_get_frequency()
     frf = read_byte(RegFrfLsb);
     frf |= ((long)read_byte(RegFrfMid) << 8);
     frf |= ((long)read_byte(RegFrfMsb) << 16);
+    fprintf("frf = %lld\n", frf);
     piUnlock(COMMAND_LOCK_NUMBER);
 
     frf = (frf * 32000000) >> 19;
