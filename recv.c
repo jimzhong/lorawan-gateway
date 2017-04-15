@@ -6,12 +6,6 @@
 volatile int stopping = 0;
 long freq = 436000000L;
 
-void stop()
-{
-    lora_end();
-    exit(0);
-}
-
 /*
 int main()
 {
@@ -61,11 +55,10 @@ int main()
     printf("Freq set");
     lora_set_txpower(10);
     printf("Freq=%ld\n", lora_get_frequency());
-    lora_rx_continuous_start();
 
-    while (!stopping)
+    while (1)
     {
-        lora_rx_continuous_get(&data);
+        lora_rx_continuous(&data);
         fprintf(stderr, "SNR=%d, RSSI=%d, CR=%d, TM=%ld\n", data.snr, data.rssi, data.cr, data.second);
         dump_hex(data.buf, data.len);
     }
