@@ -36,6 +36,7 @@ static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "R
 
 void static pin_init()
 {
+    wiringPiSetup();
     pinMode(PIN_NSS, OUTPUT);
     pinMode(PIN_DIO0, INPUT);
     pinMode(PIN_DIO1, INPUT);
