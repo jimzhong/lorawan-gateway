@@ -31,7 +31,7 @@ void lora_cleanup();
 void lora_set_standby();
 void lora_set_sleep();
 
-int lora_config(int sf, int cr, int bw);
+int lora_config(int sf, int cr, int bw, uint16_t prelen, uint8_t sw, uint8_t crcon);
 
 int lora_rx_single(rx_info_t *data, int timeout_symbols);
 int lora_rx_continuous(rx_info_t *data);
