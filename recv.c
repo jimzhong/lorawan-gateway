@@ -12,6 +12,12 @@ int main()
     rx_info_t data;
     int len;
 
+    if(wiringPiSetup())
+    {
+        perror("wiringPiSetup");
+        return -1;
+    }
+
     // signal(SIGINT, stop);
     if(!lora_init()){
         printf("Error\n");
