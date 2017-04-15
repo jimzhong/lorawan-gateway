@@ -15,7 +15,17 @@ void stop()
 int main()
 {
     int size;
-    lora_begin(freq);
+    if (!lora_begin(freq))
+    {
+        printf("Error");
+        return 1;
+    }
+    lora_setSignalBandwidth(250000);
+    lora_setSyncWord(0x12);
+    lora_setSpreadingFactor(7);
+    lora_setPreambleLength(8);
+    lora_setCodingRate4(5);
+
     for(;;)
     {
         size = lora_parsePacket();

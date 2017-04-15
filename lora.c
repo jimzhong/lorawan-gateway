@@ -355,31 +355,17 @@ void lora_setSpreadingFactor(int sf)
 
 void lora_setSignalBandwidth(long sbw)
 {
-  int bw;
+    int bw;
 
-  if (sbw <= 7.8E3) {
-    bw = 0;
-  } else if (sbw <= 10.4E3) {
-    bw = 1;
-  } else if (sbw <= 15.6E3) {
-    bw = 2;
-  } else if (sbw <= 20.8E3) {
-    bw = 3;
-  } else if (sbw <= 31.25E3) {
-    bw = 4;
-  } else if (sbw <= 41.7E3) {
-    bw = 5;
-  } else if (sbw <= 62.5E3) {
-    bw = 6;
-  } else if (sbw <= 125E3) {
-    bw = 7;
-  } else if (sbw <= 250E3) {
-    bw = 8;
-  } else /*if (sbw <= 250E3)*/ {
-    bw = 9;
-  }
+    if (sbw <= 125000) {
+        bw = 7;
+    else if (sbw <= 250000) {
+        bw = 8;
+    else /*if (sbw <= 250E3)*/ {
+        bw = 9;
+    }
 
-  writeRegister(REG_MODEM_CONFIG_1, (readRegister(REG_MODEM_CONFIG_1) & 0x0f) | (bw << 4));
+    writeRegister(REG_MODEM_CONFIG_1, (readRegister(REG_MODEM_CONFIG_1) & 0x0f) | (bw << 4));
 }
 
 void lora_setCodingRate4(int denominator)
