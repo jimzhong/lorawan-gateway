@@ -56,7 +56,7 @@ int main()
     // signal(SIGINT, stop);
     lora_init();
     printf("Inited\n");
-    lora_config(7, 45, 250, 8, 0);
+    lora_config(7, 45, 250, 8, 0x12, 0);
     lora_set_frequency(freq);
     printf("Freq set");
     lora_set_txpower(10);
@@ -71,4 +71,4 @@ int main()
     }
 
     return 0;
-}s
+}
