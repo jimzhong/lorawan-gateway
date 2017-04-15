@@ -32,4 +32,4 @@ clean:
 	rm -f gateway
 
 lora: lora.c lora.h
-	$(CC) $(CFLAGS) network.c
+	$(CC) $(CFLAGS) lora.c
