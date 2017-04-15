@@ -113,7 +113,7 @@ int lora_begin(long frequency)
     digitalWrite(_reset, LOW);
     delay(10);
     digitalWrite(_reset, HIGH);
-    delay(10);
+    delay(50);
 
     // set SS high
     digitalWrite(_ss, HIGH);
