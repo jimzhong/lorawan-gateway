@@ -231,11 +231,6 @@ float lora_packetSnr()
   return ((int8_t)readRegister(REG_PKT_SNR_VALUE)) * 0.25;
 }
 
-size_t lora_write_byte(uint8_t byte)
-{
-  return lora_write_buffer(&byte, sizeof(byte));
-}
-
 size_t lora_write_buffer(const uint8_t *buffer, size_t size)
 {
   int currentLength = readRegister(REG_PAYLOAD_LENGTH);
@@ -257,6 +252,12 @@ size_t lora_write_buffer(const uint8_t *buffer, size_t size)
   return size;
 }
 
+size_t lora_write_byte(uint8_t byte)
+{
+  return lora_write_buffer(&byte, sizeof(byte));
+}
+
+
 int lora_available()
 {
   return (readRegister(REG_RX_NB_BYTES) - _packetIndex);
@@ -264,7 +265,7 @@ int lora_available()
 
 int lora_read()
 {
-  if (!available()) {
+  if (!lora_available()) {
     return -1;
   }
 
@@ -275,7 +276,7 @@ int lora_read()
 
 int lora_peek()
 {
-  if (!available()) {
+  if (!lora_available()) {
     return -1;
   }
 
