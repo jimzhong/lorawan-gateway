@@ -1,5 +1,6 @@
 #include "radio.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <signal.h>
 
 volatile int stopping = 0;
