@@ -12,6 +12,7 @@ void stop()
     exit(0);
 }
 
+/*
 int main()
 {
     int size;
@@ -44,18 +45,20 @@ int main()
         }
     }
 }
+*/
 
-/*
-int main2()
+
+int main()
 {
     rx_info_t data;
     int len;
 
-    signal(SIGINT, stop);
-
+    // signal(SIGINT, stop);
     lora_init();
-    lora_config(8, 46, 250);
+    printf("Inited\n");
+    lora_config(7, 45, 250, 8, 0);
     lora_set_frequency(freq);
+    printf("Freq set");
     lora_set_txpower(10);
     printf("Freq=%ld\n", lora_get_frequency());
     lora_rx_continuous_start();
@@ -63,10 +66,9 @@ int main2()
     while (!stopping)
     {
         lora_rx_continuous_get(&data);
-        fprintf(stderr, "SNR=%d, RSSI=%d, CR=%d, TM=%ld\n", data.snr, data.rssi, data.cr, data.ms);
+        fprintf(stderr, "SNR=%d, RSSI=%d, CR=%d, TM=%ld\n", data.snr, data.rssi, data.cr, data.second);
         dump_hex(data.buf, data.len);
     }
 
     return 0;
-}
-*/
+}s
