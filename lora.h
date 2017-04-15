@@ -1,7 +1,7 @@
 #ifndef __LORA_H__
 #define __LORA_H__
 
-void lora_setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
+void lora_setTxPower(int level);
 void lora_setFrequency(long frequency);
 void lora_setSpreadingFactor(int sf);
 void lora_setSignalBandwidth(long sbw);

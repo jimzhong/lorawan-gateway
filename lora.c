@@ -415,7 +415,7 @@ void lora_noCrc()
   writeRegister(REG_MODEM_CONFIG_2, readRegister(REG_MODEM_CONFIG_2) & 0xfb);
 }
 
-byte lora_random()
+uint8_t lora_random()
 {
   return readRegister(REG_RSSI_WIDEBAND);
 }
@@ -429,9 +429,10 @@ void lora_setPins(int ss, int reset, int dio0)
 
 void lora_dumpRegisters()
 {
-  for (int i = 0; i < 128; i++)
+    int i;
+  for (i = 0; i < 128; i++)
   {
-      printf("0x%x: 0x%x\n", i, readRegister(i))
+      printf("0x%x: 0x%x\n", i, readRegister(i));
   }
 }
 
