@@ -510,7 +510,10 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
                 break;
         }
         if (lora_state != RADIO_RX_RUNNING)
+        {
+            printf("break\n");
             break;
+        }
         // check flags
         flags = read_byte(LORARegIrqFlags);
 
