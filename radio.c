@@ -306,6 +306,7 @@ static int lora_set_txpower(int txpower)
     write_byte(RegPaDac, 0x87);
     // trip current = 200mA
     write_byte(RegOcp, 0x37);
+    return 0;
 }
 
 /* Below are exported functions */
