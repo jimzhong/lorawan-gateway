@@ -9,7 +9,7 @@
 volatile int stopping = 0;
 long freq = 438000000L;
 
-void rxcallback(rx_info_t data)
+void callback(rx_info_t data)
 {
     printf("len=%d\n", data.len);
 }
