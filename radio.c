@@ -498,6 +498,8 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
     // start receiving
     lora_set_opmode(OPMODE_RX);
 
+    printf("state = %d\n", lora_state);
+
     while (lora_state == RADIO_RX_RUNNING)
     {
         // while not rxdone and rx_running==1
