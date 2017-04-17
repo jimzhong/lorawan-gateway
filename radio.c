@@ -471,6 +471,7 @@ The callback function is called on successful rx
 */
 int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
 {
+    uint8_t flags;
     rx_info_t data;
 
     cmd_lock();
