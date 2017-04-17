@@ -40,7 +40,7 @@ static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "R
 
 static int pin_nss;
 static int pin_rst;
-static int spi_channel;
+static int spi_ch;
 static pthread_mutex_t lora_mutex = PTHREAD_MUTEX_INITIALIZER;
 static radio_state_t lora_state;
 
@@ -61,7 +61,7 @@ int static pin_init(int spi_ch, int spi_freq, int nss, int rst)
 
     pin_nss = nss;
     pin_rst = rst;
-    spi_channel = spi_ch;
+    spi_ch = spi_ch;
 }
 
 void static pin_cleanup()
@@ -81,7 +81,7 @@ uint8_t static read_byte(uint8_t addr)
     spibuf[1] = 0x00;
 
     select_chip();
-    wiringPiSPIDataRW(SPI_CHANNEL, spibuf, 2);
+    wiringPiSPIDataRW(spi_ch, spibuf, 2);
     unselect_chip();
 
     // fprintf(stderr, "Read 0x%x from %s\n", spibuf[1], regname[addr]);
@@ -95,7 +95,7 @@ void static write_byte(uint8_t addr, uint8_t value)
     spibuf[1] = value;
 
     select_chip();
-    wiringPiSPIDataRW(SPI_CHANNEL, spibuf, 2);
+    wiringPiSPIDataRW(spi_ch, spibuf, 2);
     unselect_chip();
     // fprintf(stderr, "Wrote 0x%x to %s\n", value, regname[addr]);
 }
@@ -105,8 +105,8 @@ static void write_fifo (uint8_t* buf, uint8_t len)
     uint8_t addr = RegFifo | 0x80;
 
     select_chip();
-    wiringPiSPIDataRW(SPI_CHANNEL, &addr, 1);
-    wiringPiSPIDataRW(SPI_CHANNEL, buf, len);
+    wiringPiSPIDataRW(spi_ch, &addr, 1);
+    wiringPiSPIDataRW(spi_ch, buf, len);
     unselect_chip();
     // fprintf(stderr, "Wrote %u bytes to 0x%x\n", len, addr & 0x7f);
 }
@@ -117,8 +117,8 @@ static void read_fifo (uint8_t* buf, uint8_t len)
     memset(buf, 0, sizeof(uint8_t) * len);
 
     select_chip();
-    wiringPiSPIDataRW(SPI_CHANNEL, &addr, 1);
-    wiringPiSPIDataRW(SPI_CHANNEL, buf, len);
+    wiringPiSPIDataRW(spi_ch, &addr, 1);
+    wiringPiSPIDataRW(spi_ch, buf, len);
     unselect_chip();
 
     // fprintf(stderr, "Read %u bytes from 0x%x\n", len, addr & 0x7f);
