@@ -47,7 +47,7 @@ static radio_state_t lora_state;
 /* end private global variables */
 
 
-int static pin_init(int spi_ch, int spi_freq, int nss, int rst)
+void static pin_init(int spi_ch, int spi_freq, int nss, int rst)
 {
     wiringPiSetup();
     wiringPiSPISetup(spi_ch, spi_freq);
@@ -283,7 +283,7 @@ static int lora_set_preamble_len(int prelen)
     return -1;
 }
 
-static void lora_set_txpower(int txpower)
+static int lora_set_txpower(int txpower)
 {
     // use PA_HP, txpower in [2, 17] dBm range
     int8_t pw = txpower;
@@ -301,13 +301,11 @@ static void lora_set_txpower(int txpower)
     }
     pw -= 2;
 
-    cmd_lock();
     // Pout = 17-(15-pw) = pw-2
     write_byte(RegPaConfig, (uint8_t)(0xF0 | (pw & 0xf)));
     write_byte(RegPaDac, 0x87);
     // trip current = 200mA
     write_byte(RegOcp, 0x37);
-    cmd_unlock();
 }
 
 /* Below are exported functions */
@@ -353,9 +351,6 @@ long lora_get_frequency()
 /* !!! data will be modified after SPI transaction !! */
 int lora_tx(uint8_t *data, uint8_t len, int invert_iq)
 {
-    uint8_t flags;
-    int state;
-
     // fprintf(stderr, "Sending data of %d bytes.\n", len);
     cmd_lock();
     lora_set_opmode(OPMODE_STANDBY);
@@ -476,8 +471,6 @@ The callback function is called on successful rx
 */
 int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
 {
-    uint8_t mode;
-    uint8_t flags;
     rx_info_t data;
 
     cmd_lock();
