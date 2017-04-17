@@ -66,11 +66,11 @@ int static pin_init(int spi_ch, int spi_freq, int nss, int rst)
 
 void static pin_cleanup()
 {
-    pinMode(lora_pin_nss, INPUT);
+    pinMode(pin_nss, INPUT);
     // pinMode(PIN_DIO0, INPUT);
     // pinMode(PIN_DIO1, INPUT);
     // pinMode(PIN_DIO2, INPUT);
-    pinMode(lora_pin_rst, INPUT);
+    pinMode(pin_rst, INPUT);
 }
 
 
