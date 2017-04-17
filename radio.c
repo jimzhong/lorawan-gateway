@@ -12,7 +12,6 @@
 
 #include "radio.h"
 #include "sx1278.h"
-#include "config.h"
 
 #define select_chip()   digitalWrite(pin_nss, LOW)
 #define unselect_chip()    digitalWrite(pin_nss, HIGH)
