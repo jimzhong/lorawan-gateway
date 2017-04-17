@@ -161,8 +161,10 @@ static void lora_set_opmode(uint8_t opmode)
         case OPMODE_RX:
         case OPMODE_RX_SINGLE:
             lora_state = RADIO_RX_RUNNING;
+            break;
         case OPMODE_CAD:
             lora_state = RADIO_CAD;
+            break;
     }
     opmode |= (OPMODE_LORA | OPMODE_LOWFREQON);
     write_byte(RegOpMode, opmode);
