@@ -3,41 +3,31 @@
 #include <stdlib.h>
 #include <signal.h>
 
-volatile int stopping = 0;
-long freq = 434000000L;
+#define PIN_NSS     6
+#define PIN_RST     3
 
+volatile int stopping = 0;
+long freq = 438000000L;
+
+void rxcallback(rx_info_t data)
+{
+    printf("len=%d\n", data.len);
+}
 
 int main()
 {
     rx_info_t data;
-    int len;
 
-    if(wiringPiSetup())
+    if(!lora_init(0, 1000000, PIN_NSS, PIN_RST))
     {
-        perror("wiringPiSetup");
-        return -1;
-    }
-
-    // signal(SIGINT, stop);
-    if(!lora_init()){
-        printf("Error\n");
+        printf("SX1278 Not Present\n");
         return 1;
     }
     printf("Inited\n");
-    lora_config(7, 45, 250, 6, 0x12, 0);
-    // lora_set_frequency(freq);
-    // printf("Freq set\n");
-    lora_set_txpower(15);
+    lora_config(8, 45, 250, 17, 10, 0x12, 1);
+    lora_set_frequency(freq);
     printf("Freq=%ld\n", lora_get_frequency());
-
-    for(;;);
-
-    while (1)
-    {
-        lora_rx_continuous(&data);
-        fprintf(stderr, "SNR=%d, RSSI=%d, CR=%d, TM=%ld\n", data.snr, data.rssi, data.cr, data.second);
-        dump_hex(data.buf, data.len);
-    }
+    lora_rx_continuous(callback, 1);
 
     return 0;
 }

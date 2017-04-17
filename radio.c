@@ -14,8 +14,8 @@
 #include "sx1278.h"
 #include "config.h"
 
-#define select_chip()   digitalWrite(PIN_NSS, LOW)
-#define unselect_chip()    digitalWrite(PIN_NSS, HIGH)
+#define select_chip()   digitalWrite(pin_nss, LOW)
+#define unselect_chip()    digitalWrite(pin_nss, HIGH)
 
 #define cmd_lock()       pthread_mutex_lock(&lora_mutex)
 #define cmd_unlock()     pthread_mutex_unlock(&lora_mutex)
@@ -238,7 +238,7 @@ static int fill_rx_info_t(rx_info_t *data)
     frf = read_byte(RegFrfLsb);
     frf |= ((long)read_byte(RegFrfMid) << 8);
     frf |= ((long)read_byte(RegFrfMsb) << 16);
-    data->freq = (frf * 32000000) >> 19;    // full freq
+    data->freq = (frf * 32000000) >> 19;
 
     mc1 = read_byte(LORARegModemConfig1);
     mc2 = read_byte(LORARegModemConfig2);
