@@ -18,7 +18,7 @@ int main()
 {
     rx_info_t data;
 
-    if(!lora_init(0, 1000000, PIN_NSS, PIN_RST))
+    if(lora_init(0, 1000000, PIN_NSS, PIN_RST))
     {
         printf("SX1278 Not Present\n");
         return 1;
