@@ -474,6 +474,7 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
 {
     uint8_t flags;
     rx_info_t data;
+    int retval = 0;
 
     cmd_lock();
     if (lora_state != RADIO_IDLE)
@@ -497,45 +498,54 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
     // start receiving
     lora_set_opmode(OPMODE_RX);
 
-    // while not rxdone and rx_running==1
-    while ((read_byte(LORARegIrqFlags) & IRQ_LORA_RXDONE_MASK) == 0 && (lora_state == RADIO_RX_RUNNING))
+    while (lora_state == RADIO_RX_RUNNING)
     {
-        delay(1);
-    }
-    // check flags
-    flags = read_byte(LORARegIrqFlags);
-
-    fill_rx_info_t(&data);
-
-    if (flags & IRQ_LORA_RXDONE_MASK)
-    {
-        // if rxdone
-        write_byte(LORARegIrqFlags, 0xFF);
-
-        data.snr = lora_get_last_packet_snr();
-        data.rssi = lora_get_last_packet_rssi();
-        data.cr = lora_get_last_packet_coding_rate();
-
-        if ((lora_get_last_packet_crc_on() == 0) || ((flags & IRQ_LORA_CRCERR_MASK) == 0))
+        // while not rxdone and rx_running==1
+        while ((read_byte(LORARegIrqFlags) & IRQ_LORA_RXDONE_MASK) == 0)
         {
-            data.len = read_byte(LORARegRxNbBytes);
-            // put fifo pointer to last packet
-            write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
-            // copy to buffer
-            read_fifo(data.buf, data.len);
-            callback(data);
+            delay(1);
+            if (lora_state != RADIO_RX_RUNNING)
+                break;
+        }
+        if (lora_state != RADIO_RX_RUNNING)
+            break;
+        // check flags
+        flags = read_byte(LORARegIrqFlags);
+
+        fill_rx_info_t(&data);
+
+        if (flags & IRQ_LORA_RXDONE_MASK)
+        {
+            // if rxdone
+            write_byte(LORARegIrqFlags, 0xFF);
+
+            data.snr = lora_get_last_packet_snr();
+            data.rssi = lora_get_last_packet_rssi();
+            data.cr = lora_get_last_packet_coding_rate();
+
+            if ((lora_get_last_packet_crc_on() == 0) || ((flags & IRQ_LORA_CRCERR_MASK) == 0))
+            {
+                data.len = read_byte(LORARegRxNbBytes);
+                // put fifo pointer to last packet
+                write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
+                // copy to buffer
+                read_fifo(data.buf, data.len);
+                callback(data);
+            }
+        }
+        else
+        {
+            // lora_state != RADIO_RX_RUNNING
+            // means lora_rx_continuous_stop is called
+            lora_set_opmode(OPMODE_STANDBY);
+            write_byte(LORARegIrqFlags, 0xFF);
+            write_byte(LORARegIrqFlagsMask, 0xFF);
+            retval = -1;
+            break;
         }
     }
-    else
-    {
-        // lora_state != RADIO_RX_RUNNING
-        // means lora_rx_continuous_stop is called
-        lora_set_opmode(OPMODE_STANDBY);
-        write_byte(LORARegIrqFlags, 0xFF);
-        write_byte(LORARegIrqFlagsMask, 0xFF);
-    }
     cmd_unlock();
-    return 0;
+    return retval;
 }
 
 /* should only be call when rx continuous is running */
