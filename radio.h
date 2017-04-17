@@ -5,6 +5,14 @@
 #include <stdint.h>
 #include <time.h>
 
+typedef enum
+{
+    RADIO_IDLE = 0,
+    RADIO_RX_RUNNING,
+    RADIO_TX_RUNNING,
+    RADIO_CAD
+} radio_state_t;
+
 typedef struct
 {
     uint8_t sf;
@@ -20,23 +28,14 @@ typedef struct
 } rx_info_t;
 
 
-#define LORA_STATUS_CLEAR         0x10
-#define LORA_STATUS_HDR_INVALID   0x08
-#define LORA_STATUS_RX_RUNNING    0x04
-#define LORA_STATUS_SIGNAL_SYNCED 0x02
-#define LORA_STATUS_SIGNAL_DETECT 0x01
-
-int lora_init();
+int lora_init(int spi_ch, int spi_freq, int nss, int rst);
 void lora_cleanup();
-void lora_set_standby();
-void lora_set_sleep();
-
-int lora_config(int sf, int cr, int bw, uint16_t prelen, uint8_t sw, uint8_t crcon);
+int lora_config(int sf, int cr, int bw, int txpower, int prelen, int syncword, uint8_t crcon);
 
 int lora_rx_single(rx_info_t *data, int timeout_symbols);
-int lora_rx_continuous(rx_info_t *data);
+int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq);
 int lora_rx_continuous_stop();
-int lora_tx(uint8_t *data, uint8_t len);
+int lora_tx(uint8_t *data, uint8_t len, int invert_iq);
 
 int lora_get_current_rssi();
 int lora_set_frequency(long freq);

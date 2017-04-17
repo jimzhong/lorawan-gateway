@@ -16,7 +16,7 @@ recv: recv.c radio.o
 main.o: main.c
 	$(CC) $(CFLAGS) main.c
 
-radio.o: radio.c radio.h config.h sx1278.h
+radio.o: radio.c radio.h sx1278.h
 	$(CC) $(CFLAGS) radio.c
 
 heap.o: heap.c heap.h

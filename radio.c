@@ -7,15 +7,20 @@
 
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
+
+#include <pthread.h>
+
 #include "radio.h"
 #include "sx1278.h"
 #include "config.h"
 
-#define SPI_START_TRANSCATION() while(0)
-#define SPI_END_TRANSCATION()   while(0)
-
 #define select_chip()   digitalWrite(PIN_NSS, LOW)
 #define unselect_chip()    digitalWrite(PIN_NSS, HIGH)
+
+#define cmd_lock()       pthread_mutex_lock(&lora_mutex)
+#define cmd_unlock()     pthread_mutex_unlock(&lora_mutex)
+
+/* private global variables */
 
 static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMsb", \
 "RegFrfMid", "RegFrfLsb", "RegPaConfig", "RegPaRamp", "RegOcp", "RegLna", \
@@ -34,25 +39,39 @@ static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "R
 "RegDioMapping1", "RegDioMapping2", "RegVersion"};
 
 
-void static pin_init()
+static int pin_nss;
+static int pin_rst;
+static int spi_channel;
+static pthread_mutex_t lora_mutex = PTHREAD_MUTEX_INITIALIZER;
+static radio_state_t lora_state;
+
+/* end private global variables */
+
+
+int static pin_init(int spi_ch, int spi_freq, int nss, int rst)
 {
-    pinMode(PIN_NSS, OUTPUT);
-    pinMode(PIN_DIO0, INPUT);
-    pinMode(PIN_DIO1, INPUT);
-    pinMode(PIN_DIO2, INPUT);
-    pinMode(PIN_RST, OUTPUT);
-    digitalWrite(PIN_NSS, HIGH);
-    digitalWrite(PIN_RST, HIGH);
-    wiringPiSPISetup(SPI_CHANNEL, SPI_FREQ);
+    wiringPiSetup();
+    wiringPiSPISetup(spi_ch, spi_freq);
+    pinMode(nss, OUTPUT);
+    // pinMode(PIN_DIO0, INPUT);
+    // pinMode(PIN_DIO1, INPUT);
+    // pinMode(PIN_DIO2, INPUT);
+    pinMode(rst, OUTPUT);
+    digitalWrite(nss, HIGH);
+    digitalWrite(rst, HIGH);
+
+    pin_nss = nss;
+    pin_rst = rst;
+    spi_channel = spi_ch;
 }
 
 void static pin_cleanup()
 {
-    pinMode(PIN_NSS, INPUT);
-    pinMode(PIN_DIO0, INPUT);
-    pinMode(PIN_DIO1, INPUT);
-    pinMode(PIN_DIO2, INPUT);
-    pinMode(PIN_RST, INPUT);
+    pinMode(lora_pin_nss, INPUT);
+    // pinMode(PIN_DIO0, INPUT);
+    // pinMode(PIN_DIO1, INPUT);
+    // pinMode(PIN_DIO2, INPUT);
+    pinMode(lora_pin_rst, INPUT);
 }
 
 
@@ -117,37 +136,39 @@ static void lora_reset()
 static uint8_t lora_get_version()
 {
     uint8_t ver;
-    SPI_START_TRANSCATION();
     ver = read_byte(RegVersion);
-    SPI_END_TRANSCATION();
     return ver;
 }
 
 static uint8_t lora_get_opmode()
 {
     uint8_t mode;
-    SPI_START_TRANSCATION();
     mode = read_byte(RegOpMode) & OPMODE_MASK;
-    SPI_END_TRANSCATION();
     return mode;
 }
 
 
-// TODO: remove busy waiting
 static void lora_set_opmode(uint8_t opmode)
 {
+    switch (opmode)
+    {
+        case OPMODE_SLEEP:
+        case OPMODE_STANDBY:
+            lora_state = RADIO_IDLE;
+            break;
+        case OPMODE_TX:
+            lora_state = RADIO_TX_RUNNING;
+            break;
+        case OPMODE_RX:
+        case OPMODE_RX_SINGLE:
+            lora_state = RADIO_RX_RUNNING;
+        case OPMODE_CAD:
+            lora_state = RADIO_CAD;
+    }
     opmode |= (OPMODE_LORA | OPMODE_LOWFREQON);
-    SPI_START_TRANSCATION();
     write_byte(RegOpMode, opmode);
-    SPI_END_TRANSCATION();
 }
 
-static void dump_dio()
-{
-    fprintf(stderr, "DIO0 = %d, ", digitalRead(PIN_DIO0));
-    fprintf(stderr, "DIO1 = %d, ", digitalRead(PIN_DIO1));
-    fprintf(stderr, "DIO2 = %d\n", digitalRead(PIN_DIO2));
-}
 
 static void lora_set_rx_timeout(int symbols)
 {
@@ -156,84 +177,55 @@ static void lora_set_rx_timeout(int symbols)
 
     uint8_t val;
 
-    SPI_START_TRANSCATION();
     val = (read_byte(LORARegModemConfig2) & 0xfc) | ((symbols >> 8) & 0x3);
     write_byte(LORARegModemConfig2, val);
     write_byte(LORARegSymbTimeoutLsb, (uint8_t)(val & 0xff));
-    SPI_END_TRANSCATION();
 }
 
 static void lora_set_invert_iq()
 {
-    // fprintf(stderr, "Set invert.\n");
-
-    SPI_START_TRANSCATION();
     write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) | 0x40);
-    // assert(read_byte(LORARegInvertIQ) & 0x40);
-    SPI_END_TRANSCATION();
 }
 
 static void lora_clear_invert_iq()
 {
-    // fprintf(stderr, "Clear invert.\n");
-
-    SPI_START_TRANSCATION();
     write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) & 0xbf);
-    // assert((read_byte(LORARegInvertIQ) & 0x40) == 0);
-    SPI_END_TRANSCATION();
 }
 
 static int lora_get_last_packet_coding_rate()
 {
     int cr;
-    SPI_START_TRANSCATION();
     cr = (read_byte(LORARegModemStat) >> 5) & 0x07;
-    SPI_END_TRANSCATION();
     switch (cr)
     {
         case 1: return 45;
         case 2: return 46;
         case 3: return 47;
         case 4: return 48;
-        default: fprintf(stderr, "Unknown CR = %d\n", cr);
     }
     return 0;
 }
 
 static int lora_get_last_packet_snr()
 {
-    int ret;
-    SPI_START_TRANSCATION();
-    ret = (int8_t)read_byte(LORARegPktSnrValue) >> 2;
-    SPI_END_TRANSCATION();
-    return ret;
+    return (int8_t)read_byte(LORARegPktSnrValue) >> 2;
 }
 
 static int lora_get_last_packet_rssi()
 {
     int ret;
-    SPI_START_TRANSCATION();
     ret = read_byte(LORARegPktRssiValue);
-    SPI_END_TRANSCATION();
     return -164 + ret;
+}
+
+static int lora_get_last_packet_crc_on()
+{
+    return !!(read_byte(LORARegHopChannel) & 0x20);
 }
 
 static int lora_get_modem_status()
 {
-    int stat;
-    SPI_START_TRANSCATION();
-    stat = (read_byte(LORARegModemStat) & 0x1f);
-    SPI_END_TRANSCATION();
-    return stat;
-}
-
-static int lora_get_last_packet_crc()
-{
-    int crc;
-    SPI_START_TRANSCATION();
-    crc = read_byte(LORARegHopChannel) & 0x20;
-    SPI_END_TRANSCATION();
-    return crc;
+    return (read_byte(LORARegModemStat) & 0x1f);
 }
 
 // fill rx_info_t with current configuration and time
@@ -271,31 +263,75 @@ static int fill_rx_info_t(rx_info_t *data)
     return 0;
 }
 
+static int lora_set_sync_word(uint8_t sw)
+{
+    if (lora_state == RADIO_IDLE)
+    {
+        write_byte(LORARegSyncWord, sw);
+        return 0;
+    }
+    return -1;
+}
+
+static int lora_set_preamble_len(int prelen)
+{
+    if (lora_state == RADIO_IDLE)
+    {
+        write_byte(LORARegPreambleMsb, (prelen >> 8) & 0xff);
+        write_byte(LORARegPreambleLsb, (prelen) & 0xff);
+        return 0;
+    }
+    return -1;
+}
+
+static void lora_set_txpower(int txpower)
+{
+    // use PA_HP, txpower in [2, 17] dBm range
+    int8_t pw = txpower;
+    if (lora_state != RADIO_IDLE)
+    {
+        return -1;
+    }
+    if(pw >= 17)
+    {
+        pw = 17;
+    }
+    else if(pw < 2)
+    {
+        pw = 2;
+    }
+    pw -= 2;
+
+    cmd_lock();
+    // Pout = 17-(15-pw) = pw-2
+    write_byte(RegPaConfig, (uint8_t)(0xF0 | (pw & 0xf)));
+    write_byte(RegPaDac, 0x87);
+    // trip current = 200mA
+    write_byte(RegOcp, 0x37);
+    cmd_unlock();
+}
+
 /* Below are exported functions */
 
 int lora_get_current_rssi()
 {
     int rssi;
-    piLock(COMMAND_LOCK_NUMBER);
-    SPI_START_TRANSCATION();
+    cmd_lock();
     rssi = -164 + read_byte(LORARegRssiValue);
-    SPI_END_TRANSCATION();
-    piUnlock(COMMAND_LOCK_NUMBER);
+    cmd_unlock();
     return rssi;
 }
 
 int lora_set_frequency(long freq)
 {
     uint64_t frf = ((uint64_t)freq << 19) / 32000000;
-    if (freq < 440000000 && freq > 430000000)
+    if (freq < 450000000 && freq > 420000000)
     {
-        piLock(COMMAND_LOCK_NUMBER);
-        SPI_START_TRANSCATION();
+        cmd_lock();
         write_byte(RegFrfMsb, (uint8_t)(frf>>16));
         write_byte(RegFrfMid, (uint8_t)(frf>>8));
         write_byte(RegFrfLsb, (uint8_t)(frf));
-        SPI_END_TRANSCATION();
-        piUnlock(COMMAND_LOCK_NUMBER);
+        cmd_unlock();
         return 0;
     }
     return -1;
@@ -305,38 +341,32 @@ long lora_get_frequency()
 {
     long long frf = 0;
 
-    piLock(COMMAND_LOCK_NUMBER);
-    fprintf(stderr, "0x%x 0x%x 0x%x\n", read_byte(RegFrfLsb), read_byte(RegFrfMid), read_byte(RegFrfMsb));
+    cmd_lock();
     frf = read_byte(RegFrfLsb);
     frf |= ((long)read_byte(RegFrfMid) << 8);
     frf |= ((long)read_byte(RegFrfMsb) << 16);
-    // fprintf(stderr, "frf = %lld\n", frf);
-    piUnlock(COMMAND_LOCK_NUMBER);
-
+    cmd_unlock();
     frf = (frf * 32000000) >> 19;
     return (long)frf;
 }
 
 /* send data of len */
 /* !!! data will be modified after SPI transaction !! */
-int lora_tx(uint8_t *data, uint8_t len)
+int lora_tx(uint8_t *data, uint8_t len, int invert_iq)
 {
     uint8_t flags;
     int state;
 
     // fprintf(stderr, "Sending data of %d bytes.\n", len);
-    piLock(COMMAND_LOCK_NUMBER);
+    cmd_lock();
     lora_set_opmode(OPMODE_STANDBY);
 
-#ifdef CONFIG_LORA_IS_GATEWAY
-    // set invert I/Q bit
-    lora_set_invert_iq();
-#else
-    // clear invert I/Q bit
-    lora_clear_invert_iq();
-#endif
+    if (invert_iq)
+        lora_set_invert_iq();
+    else
+        lora_clear_invert_iq();
 
-    write_byte(RegDioMapping1, MAP_DIO0_LORA_TXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
+    // write_byte(RegDioMapping1, MAP_DIO1_LORA_NOP|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
     write_byte(LORARegIrqFlags, 0xFF);
     write_byte(LORARegIrqFlagsMask, ~IRQ_LORA_TXDONE_MASK);
 
@@ -345,223 +375,196 @@ int lora_tx(uint8_t *data, uint8_t len)
     write_byte(LORARegPayloadLength, len);
 
     write_fifo(data, len);
-    fprintf(stderr, "before TX IRQ=%x\n", read_byte(LORARegIrqFlags));
-    // dump_dio();
 
     lora_set_opmode(OPMODE_TX); //start sending here
 
-    do {
-        state = digitalRead(PIN_DIO0);
-        delay(1);
-    } while(state == 0);
+    while((read_byte(LORARegIrqFlags) & IRQ_LORA_TXDONE_MASK) == 0)
+    {
+        delay(1);   // wait until TX done IRQ
+    }
 
-    // dump_dio();
-
-    flags = read_byte(LORARegIrqFlags);
-    assert(flags & IRQ_LORA_TXDONE_MASK);
+    lora_state = RADIO_IDLE;
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
 
-    // fprintf(stderr, "after TX IRQ=%x\n", read_byte(LORARegIrqFlags));
-
-    piUnlock(COMMAND_LOCK_NUMBER);
-    // fprintf(stderr, "Data sent\n");
-
+    cmd_unlock();
     return 0;
 }
 
-// return the length of received packet
-// 0 for timeout
-int lora_rx_single(rx_info_t *data, int timeout_symbols)
+// return 0 on success
+// -1 on timeouts and other failures
+int lora_rx_single(rx_info_t *data, int timeout_symbols, int invert_iq)
 {
-    int state;
+    int retval;
     uint8_t flags;
-    uint8_t mode;
 
-    piLock(COMMAND_LOCK_NUMBER);
+    cmd_lock();
 
-    mode = lora_get_opmode();
-    if (mode != OPMODE_STANDBY && mode != OPMODE_SLEEP)
+    if (lora_state != RADIO_IDLE)
     {
-        fprintf(stderr, "Cannot switch to rx singal mode\n");
-        piUnlock(COMMAND_LOCK_NUMBER);
+        cmd_unlock();
         return -1;
     }
     lora_set_opmode(OPMODE_STANDBY);
 
-    #ifdef CONFIG_LORA_IS_GATEWAY
-        // do NOT invert I and Q when RX on gateway
-        lora_clear_invert_iq();
-    #else
-        // invert I and Q when RX on mote
+    if (invert_iq)
         lora_set_invert_iq();
-    #endif
+    else
+        lora_clear_invert_iq();
 
     if (timeout_symbols > 0)
     {
         lora_set_rx_timeout(timeout_symbols);
     }
 
-    write_byte(RegLna, CONFIG_LORA_LNA_RX_GAIN);
-    write_byte(LORARegPayloadMaxLength, CONFIG_LORA_MAX_RX_LENGTH);
-    write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
+    write_byte(RegLna, LORA_LNA_RX_GAIN_DEFAULT);
+    write_byte(LORARegPayloadMaxLength, LORA_PAYLOAD_MAX_LENGTH_DEFAULT);
+    // write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
     // clear flags
     write_byte(LORARegIrqFlags, 0xFF);
     write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK|IRQ_LORA_CRCERR_MASK)));
     // start receiving
     lora_set_opmode(OPMODE_RX_SINGLE);
 
-    // wait for rxdone or timeout
+    // wait for rxdone or timeout flag is set
     do {
-        state = digitalRead(PIN_DIO0) | digitalRead(PIN_DIO1);
-    }
-    while(state == 0);
+        delay(1);
+        flags = read_byte(LORARegIrqFlags);
+    } while ((flags & (IRQ_LORA_RXDONE_MASK | IRQ_LORA_RXTOUT_MASK)) == 0);
     // check flags
     flags = read_byte(LORARegIrqFlags);
     // fill rx_info_t with bw, sf, freq, second, nanosecond
+
     fill_rx_info_t(data);
+
     if (flags & IRQ_LORA_RXDONE_MASK)
     {
         data->snr = lora_get_last_packet_snr();
         data->rssi = lora_get_last_packet_rssi();
         data->cr = lora_get_last_packet_coding_rate();
         // only copy data if crc check is OK or no crc checksum
-        if ((lora_get_last_packet_crc() == 0) || ((flags & IRQ_LORA_CRCERR_MASK) == 0))
+        if ((lora_get_last_packet_crc_on() == 0) || ((flags & IRQ_LORA_CRCERR_MASK) == 0))
         {
             data->len = read_byte(LORARegRxNbBytes);
             // put fifo pointer to last packet
             write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
             // copy to buffer
             read_fifo(data->buf, data->len);
+            retval = 0;
         }
         else
         {
-            fprintf(stderr, "CRC check failed.\n");
+            //CRC check failed
             data->len = 0;
+            retval = -1;
         }
     }
     else
     {
-        fprintf(stderr, "RX timeout.\n");
+        // RX timed out
         data->len = 0;
+        retval = -1;
     }
     write_byte(LORARegIrqFlagsMask, 0xFF);
     write_byte(LORARegIrqFlags, 0xFF);
-    piUnlock(COMMAND_LOCK_NUMBER);
-    return data->len;
+    cmd_unlock();
+    return retval;
 }
 
 
-/*
-TODO: rewrite with callbacks
+/* Do continuous RX
+The callback function is called on successful rx
 */
-
-static int volatile rx_running;
-
-int lora_rx_continuous(rx_info_t *data)
+int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
 {
     uint8_t mode;
     uint8_t flags;
+    rx_info_t data;
 
-    piLock(COMMAND_LOCK_NUMBER);
-    mode = lora_get_opmode();
-    if (mode != OPMODE_RX)
+    cmd_lock();
+    if (lora_state != RADIO_IDLE)
     {
-        // only set mode to RX if not in RX mode
-        if (mode != OPMODE_STANDBY && mode != OPMODE_SLEEP)
-        {
-            fprintf(stderr, "Cannot switch to rx mode\n");
-            piUnlock(COMMAND_LOCK_NUMBER);
-            return -1;
-        }
-        lora_set_opmode(OPMODE_STANDBY);
-
-        #ifdef CONFIG_LORA_IS_GATEWAY
-            // do NOT invert I and Q when RX on gateway
-            lora_clear_invert_iq();
-        #else
-            // invert I and Q when RX on mote
-            lora_set_invert_iq();
-        #endif
-
-        write_byte(RegLna, CONFIG_LORA_LNA_RX_GAIN);
-        write_byte(LORARegPayloadMaxLength, CONFIG_LORA_MAX_RX_LENGTH);
-        write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
-        // clear flags
-        write_byte(LORARegIrqFlags, 0xFF);
-        write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_CRCERR_MASK)));
-        // start receiving
-        lora_set_opmode(OPMODE_RX);
+        cmd_unlock();
+        return -1;
     }
 
-    rx_running = 1;
-    fprintf(stderr, "RX continuous started.\n");
+    lora_set_opmode(OPMODE_STANDBY);
+
+    if (invert_iq)
+        lora_set_invert_iq();
+    else
+        lora_clear_invert_iq();
+
+    write_byte(RegLna, LORA_LNA_RX_GAIN_DEFAULT);
+    write_byte(LORARegPayloadMaxLength, LORA_PAYLOAD_MAX_LENGTH_DEFAULT);
+    // clear flags
+    write_byte(LORARegIrqFlags, 0xFF);
+    write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_CRCERR_MASK)));
+    // start receiving
+    lora_set_opmode(OPMODE_RX);
 
     // while not rxdone and rx_running==1
-    while ((digitalRead(PIN_DIO0) == 0) && rx_running)
+    while ((read_byte(LORARegIrqFlags) & IRQ_LORA_RXDONE_MASK) == 0 && (lora_state == RADIO_RX_RUNNING))
     {
         delay(1);
     }
     // check flags
     flags = read_byte(LORARegIrqFlags);
-    // fprintf(stderr, "IRQ=%x\n", flags);
-    // fill rx_info_t with bw, sf, freq, second, nanosecond
-    fill_rx_info_t(data);
-    if (rx_running && (flags & IRQ_LORA_RXDONE_MASK))
+
+    fill_rx_info_t(&data);
+
+    if (flags & IRQ_LORA_RXDONE_MASK)
     {
         // if rxdone
-        fprintf(stderr, "Received a packet");
         write_byte(LORARegIrqFlags, 0xFF);
 
-        data->snr = lora_get_last_packet_snr();
-        data->rssi = lora_get_last_packet_rssi();
-        data->cr = lora_get_last_packet_coding_rate();
-        if ((lora_get_last_packet_crc() == 0) || ((flags & IRQ_LORA_CRCERR_MASK) == 0))
+        data.snr = lora_get_last_packet_snr();
+        data.rssi = lora_get_last_packet_rssi();
+        data.cr = lora_get_last_packet_coding_rate();
+
+        if ((lora_get_last_packet_crc_on() == 0) || ((flags & IRQ_LORA_CRCERR_MASK) == 0))
         {
-            data->len = read_byte(LORARegRxNbBytes);
+            data.len = read_byte(LORARegRxNbBytes);
             // put fifo pointer to last packet
             write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
             // copy to buffer
-            read_fifo(data->buf, data->len);
+            read_fifo(data.buf, data.len);
+            callback(data);
         }
-        else
-        {
-            data->len = 0;
-            fprintf(stderr, "CRC failed.\n");
-        }
-        fprintf(stderr, "Got a packet of %d bytes.\n", data->len);
     }
     else
     {
+        // lora_state != RADIO_RX_RUNNING
+        // means lora_rx_continuous_stop is called
         lora_set_opmode(OPMODE_STANDBY);
         write_byte(LORARegIrqFlags, 0xFF);
         write_byte(LORARegIrqFlagsMask, 0xFF);
-        rx_running = 0;
-        fprintf(stderr, "RX exited prematurely.\n");
-        data->len = 0;
     }
-    piUnlock(COMMAND_LOCK_NUMBER);
-    return data->len;
-}
-
-int lora_rx_continuous_stop()
-{
-    rx_running = 0;
-    piLock(COMMAND_LOCK_NUMBER);
-    piUnlock(COMMAND_LOCK_NUMBER);
+    cmd_unlock();
     return 0;
 }
 
-int lora_init()
+/* should only be call when rx continuous is running */
+int lora_rx_continuous_stop()
 {
-    pin_init();
+    if (lora_state == RADIO_RX_RUNNING)
+    {
+        lora_state = RADIO_IDLE;
+        cmd_lock();
+        cmd_unlock();
+        return 0;
+    }
+    return -1;
+}
 
-    piLock(COMMAND_LOCK_NUMBER);
+int lora_init(int spi_ch, int spi_freq, int nss, int rst)
+{
+    cmd_lock();
+    pin_init(spi_ch, spi_freq, nss, rst);
     lora_reset();
     if (lora_get_version() == 0x12)
     {
-        lora_set_opmode(OPMODE_SLEEP);
-
+        lora_set_opmode(OPMODE_STANDBY);
         // //calibrate
         // write_byte(RegPaConfig, 0);
         // write_byte(FSKRegImageCal, (readReg(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_MASK)|RF_IMAGECAL_IMAGECAL_START);
@@ -569,26 +572,26 @@ int lora_init()
         // disable all irqs
         write_byte(LORARegIrqFlags, 0xFF);
         write_byte(LORARegIrqFlagsMask, 0xFF);
+        write_byte(RegDioMapping1, MAP_DIO1_LORA_NOP|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
     }
     else
     {
-        piUnlock(COMMAND_LOCK_NUMBER);
+        cmd_unlock();
         return -1;
     }
-
-    piUnlock(COMMAND_LOCK_NUMBER);
+    cmd_unlock();
     return 0;
 }
 
 
 // always explicit mode, SF >= 7
-int lora_config(int sf, int cr, int bw, uint16_t prelen, uint8_t sw, uint8_t crcon)
+int lora_config(int sf, int cr, int bw, int txpower, int prelen, int syncword, uint8_t crcon)
 {
     uint8_t mc1 = 0;
     uint8_t mc2 = 0;
     uint8_t mc3 = 0;
 
-    fprintf(stderr, "Set SF=%d, CR=%d, BW=%d, prelen=%d, sync=0x%x\n", sf, cr, bw, prelen, sw);
+    // fprintf(stderr, "Set SF=%d, CR=%d, BW=%d, prelen=%d, sync=0x%x\n", sf, cr, bw, prelen, sw);
     switch (bw)
     {
         case 125: mc1 |= 0x70; break;
@@ -617,71 +620,36 @@ int lora_config(int sf, int cr, int bw, uint16_t prelen, uint8_t sw, uint8_t crc
     }
     else
     {
-        fprintf(stderr, "Unknown SF = %d\n", sf);
+        // fprintf(stderr, "Unknown SF = %d\n", sf);
         return -1;
     }
 
-    piLock(COMMAND_LOCK_NUMBER);
-    // set mc1 and mc2
-    write_byte(LORARegModemConfig1, mc1);
-    write_byte(LORARegModemConfig2, mc2);
     // use auto AGC
     mc3 = SX1278_MC3_AGCAUTO;
     if ((sf == 11 || sf == 12) && bw == 125)
         mc3 |= SX1278_MC3_LOW_DATA_RATE_OPTIMIZE;
+
+    cmd_lock();
+    // set mc1 and mc2
+    write_byte(LORARegModemConfig1, mc1);
+    write_byte(LORARegModemConfig2, mc2);
     write_byte(LORARegModemConfig3, mc3);
 
-    // set preamble length
-    write_byte(LORARegPreambleMsb, (prelen >> 8) & 0xff);
-    write_byte(LORARegPreambleLsb, (prelen) & 0xff);
-    // set sync word
-    write_byte(LORARegSyncWord, sw);
-    piUnlock(COMMAND_LOCK_NUMBER);
+    lora_set_txpower(txpower);
+    lora_set_sync_word(syncword);
+    lora_set_preamble_len(prelen);
+
+    cmd_unlock();
     return 0;
-}
-
-void lora_set_txpower(int txpower)
-{
-    // use PA_HP, txpower in [2, 17] dBm range
-    int8_t pw = txpower;
-    if(pw >= 17) {
-        pw = 17;
-    } else if(pw < 2) {
-        pw = 2;
-    }
-    pw -= 2;
-
-    piLock(COMMAND_LOCK_NUMBER);
-    // Pout = 17-(15-pw) = pw-2
-    write_byte(RegPaConfig, (uint8_t)(0xF0 | (pw&0xf)));
-    write_byte(RegPaDac, 0x87);
-    // trip current = 200mA
-    write_byte(RegOcp, 0x37);
-    piUnlock(COMMAND_LOCK_NUMBER);
 }
 
 void lora_cleanup()
 {
     // fprintf(stderr, "Cleaning up SX1278.\n");
-    piLock(COMMAND_LOCK_NUMBER);
+    cmd_lock();
     lora_set_opmode(OPMODE_SLEEP);
     pin_cleanup();
-    piLock(COMMAND_LOCK_NUMBER);
-}
-
-void lora_set_standby()
-{
-    piLock(COMMAND_LOCK_NUMBER);
-    lora_set_opmode(OPMODE_STANDBY);
-    piUnlock(COMMAND_LOCK_NUMBER);
-    // delay(10);
-}
-
-void lora_set_sleep()
-{
-    piLock(COMMAND_LOCK_NUMBER);
-    lora_set_opmode(OPMODE_SLEEP);
-    piUnlock(COMMAND_LOCK_NUMBER);
+    cmd_unlock();
 }
 
 

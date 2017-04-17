@@ -2,6 +2,10 @@
 #ifndef __SX1278_H__
 #define __SX1278_H__
 
+// default values for registers
+#define LORA_LNA_RX_GAIN_DEFAULT   0x20
+#define LORA_PAYLOAD_MAX_LENGTH_DEFAULT         0xff
+
 // Registers Mapping
 #define RegFifo                                    0x00 // common
 #define RegOpMode                                  0x01 // common
