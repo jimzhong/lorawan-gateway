@@ -36,7 +36,7 @@ void location_decoder(rx_info_t data)
     // ctime_r(&(data.second), timebuf);
     loc = (location_t *)data.buf;
     // printf("========= %s =========\n", timebuf);
-    printf("RSSI = %d\nCR = %d\nLEN = %d", data.rssi, data.cr, data.len);
+    printf("RSSI = %d\nCR = %d\nLEN = %d\n", data.rssi, data.cr, data.len);
     // printf("Latitude = %.7lf\n", (double)(loc->lat) * 1e-7);
     // printf("Longitude = %.7lf\n", (double)(loc->lon) * 1e-7);
     // printf("Height = %.2lf meters\n", (double)(loc->height) * 1e-3);
