@@ -53,6 +53,7 @@ static radio_state_t lora_state;
 
 /* end private global variables */
 
+/* SPI related private functions */
 
 void static pin_init(int spi_ch, int spi_freq, int nss, int rst)
 {
@@ -79,7 +80,6 @@ void static pin_cleanup()
     // pinMode(PIN_DIO2, INPUT);
     pinMode(pin_rst, INPUT);
 }
-
 
 uint8_t static read_byte(uint8_t addr)
 {
@@ -134,6 +134,10 @@ static void read_fifo (uint8_t* buf, uint8_t len)
 
     // fprintf(stderr, "Read %u bytes from 0x%x\n", len, addr & 0x7f);
 }
+
+/* end SPI related private functions */
+
+
 
 static void lora_reset()
 {
@@ -265,35 +269,39 @@ static int fill_rx_info_t(rx_info_t *data)
     return 0;
 }
 
-static int lora_set_sync_word(uint8_t sw)
+/* Below are exported functions */
+
+int lora_set_sync_word(uint8_t sw)
 {
+    cmd_lock();
     if (lora_state == RADIO_IDLE)
     {
         write_byte(LORARegSyncWord, sw);
+        cmd_unlock();
         return 0;
     }
+    cmd_unlock();
     return -1;
 }
 
-static int lora_set_preamble_len(int prelen)
+int lora_set_preamble_len(int prelen)
 {
+    cmd_lock();
     if (lora_state == RADIO_IDLE)
     {
         write_byte(LORARegPreambleMsb, (prelen >> 8) & 0xff);
         write_byte(LORARegPreambleLsb, (prelen) & 0xff);
+        cmd_unlock();
         return 0;
     }
+    cmd_unlock();
     return -1;
 }
 
-static int lora_set_txpower(int txpower)
+int lora_set_txpower(int txpower)
 {
     // use PA_HP, txpower in [2, 17] dBm range
     int8_t pw = txpower;
-    if (lora_state != RADIO_IDLE)
-    {
-        return -1;
-    }
     if(pw >= 17)
     {
         pw = 17;
@@ -304,15 +312,71 @@ static int lora_set_txpower(int txpower)
     }
     pw -= 2;
 
-    // Pout = 17-(15-pw) = pw-2
-    write_byte(RegPaConfig, (uint8_t)(0xF0 | (pw & 0xf)));
-    write_byte(RegPaDac, 0x87);
-    // trip current = 200mA
-    write_byte(RegOcp, 0x37);
-    return 0;
+    cmd_lock();
+    if (lora_state == RADIO_IDLE)
+    {
+        // Pout = 17-(15-pw) = pw-2
+        write_byte(RegPaConfig, (uint8_t)(0xF0 | (pw & 0xf)));
+        write_byte(RegPaDac, 0x87);
+        // trip current = 200mA
+        write_byte(RegOcp, 0x37);
+        cmd_unlock();
+        return 0;
+    }
+    cmd_unlock();
+    return -1;
 }
 
-/* Below are exported functions */
+int lora_set_sf_cr_bw_crc(int sf, int cr, int bw, int crcon)
+{
+    uint8_t mc1 = 0;
+    uint8_t mc2 = 0;
+    uint8_t mc3 = 0;
+
+    switch (bw)
+    {
+        case 125: mc1 |= 0x70; break;
+        case 250: mc1 |= 0x80; break;
+        case 500: mc1 |= 0x90; break;
+        default: return -1;
+    }
+    switch (cr) {
+        case 45: mc1 |= 0x02; break;
+        case 46: mc1 |= 0x04; break;
+        case 47: mc1 |= 0x06; break;
+        case 48: mc1 |= 0x08; break;
+        default: return -1;
+    }
+
+    if (crcon)
+        mc2 |= SX1278_MC2_RX_PAYLOAD_CRCON;
+
+    if (sf >= 7 && sf <= 12)
+    {
+        mc2 |= (sf << 4) & 0xf0;
+    }
+    else
+    {
+        return -1;
+    }
+
+    // use auto AGC
+    mc3 = SX1278_MC3_AGCAUTO;
+    if ((sf == 11 || sf == 12) && bw == 125)
+        mc3 |= SX1278_MC3_LOW_DATA_RATE_OPTIMIZE;
+
+    cmd_lock();
+    if (lora_state == RADIO_IDLE)
+    {
+        write_byte(LORARegModemConfig1, mc1);
+        write_byte(LORARegModemConfig2, mc2);
+        write_byte(LORARegModemConfig3, mc3);
+        cmd_unlock();
+        return 0;
+    }
+    cmd_unlock();
+    return -1;
+}
 
 int lora_get_current_rssi()
 {
@@ -326,15 +390,16 @@ int lora_get_current_rssi()
 int lora_set_frequency(long freq)
 {
     uint64_t frf = ((uint64_t)freq << 19) / 32000000;
-    if (freq < 450000000 && freq > 420000000)
+    cmd_lock();
+    if (lora_state == RADIO_IDLE && freq < 450000000 && freq > 420000000)
     {
-        cmd_lock();
         write_byte(RegFrfMsb, (uint8_t)(frf>>16));
         write_byte(RegFrfMid, (uint8_t)(frf>>8));
         write_byte(RegFrfLsb, (uint8_t)(frf));
         cmd_unlock();
         return 0;
     }
+    cmd_unlock();
     return -1;
 }
 
@@ -596,67 +661,29 @@ int lora_init(int spi_ch, int spi_freq, int nss, int rst)
 }
 
 
-// always explicit mode, SF >= 7
-int lora_config(int sf, int cr, int bw, int txpower, int prelen, int syncword, uint8_t crcon)
+int lora_config(int sf, int cr, int bw, int crcon, int txpower, int prelen, int syncword)
 {
-    uint8_t mc1 = 0;
-    uint8_t mc2 = 0;
-    uint8_t mc3 = 0;
-
-    // fprintf(stderr, "Set SF=%d, CR=%d, BW=%d, prelen=%d, sync=0x%x\n", sf, cr, bw, prelen, sw);
-    switch (bw)
-    {
-        case 125: mc1 |= 0x70; break;
-        case 250: mc1 |= 0x80; break;
-        case 500: mc1 |= 0x90; break;
-        default:
-            // fprintf(stderr, "Unknown BW = %d\n", bw);
-            return -1;
-    }
-    switch (cr) {
-        case 45: mc1 |= 0x02; break;
-        case 46: mc1 |= 0x04; break;
-        case 47: mc1 |= 0x06; break;
-        case 48: mc1 |= 0x08; break;
-        default:
-            // fprintf(stderr, "Unknown CR = %d\n", cr);
-            return -1;
-    }
-
-    if (crcon)
-        mc2 |= SX1278_MC2_RX_PAYLOAD_CRCON;
-
-    if (sf >= 7 && sf <= 12)
-    {
-        mc2 |= (sf << 4) & 0xf0;
-    }
-    else
-    {
-        // fprintf(stderr, "Unknown SF = %d\n", sf);
-        return -1;
-    }
-
-    // use auto AGC
-    mc3 = SX1278_MC3_AGCAUTO;
-    if ((sf == 11 || sf == 12) && bw == 125)
-        mc3 |= SX1278_MC3_LOW_DATA_RATE_OPTIMIZE;
-
     cmd_lock();
-    if (lora_state != RADIO_IDLE)
+    if (lora_set_sf_cr_bw_crc(sf, cr, bw, crcon) != 0)
     {
+        cmd_unlock();
         return -1;
     }
-    // lora_set_opmode(OPMODE_SLEEP);
-    // set mc1 and mc2
-    write_byte(LORARegModemConfig1, mc1);
-    write_byte(LORARegModemConfig2, mc2);
-    write_byte(LORARegModemConfig3, mc3);
-
-    lora_set_txpower(txpower);
-    lora_set_sync_word(syncword);
-    lora_set_preamble_len(prelen);
-
-    // lora_set_opmode(OPMODE_STANDBY);
+    if (lora_set_txpower(txpower) != 0)
+    {
+        cmd_unlock();
+        return -1;
+    }
+    if (lora_set_sync_word(syncword) != 0)
+    {
+        cmd_unlock();
+        return -1;
+    }
+    if (lora_set_preamble_len(prelen) != 0)
+    {
+        cmd_unlock();
+        return -1;
+    }
     cmd_unlock();
     return 0;
 }

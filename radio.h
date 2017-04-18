@@ -30,7 +30,12 @@ typedef struct
 
 int lora_init(int spi_ch, int spi_freq, int nss, int rst);
 void lora_cleanup();
-int lora_config(int sf, int cr, int bw, int txpower, int prelen, int syncword, uint8_t crcon);
+
+int lora_set_txpower(int txpower);
+int lora_set_preamble_len(int prelen);
+int lora_set_sync_word(uint8_t sw);
+int lora_set_sf_cr_bw_crc(int sf, int cr, int bw, int crcon);
+int lora_config(int sf, int cr, int bw, int crcon, int txpower, int prelen, int syncword);
 
 int lora_rx_single(rx_info_t *data, int timeout_symbols, int invert_iq);
 int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq);
