@@ -1,4 +1,5 @@
 #include "radio.h"
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -9,9 +10,37 @@
 volatile int stopping = 0;
 long freq = 438000000L;
 
+typedef struct
+{
+    uint8_t hour;
+    uint8_t min;
+    uint8_t sec;
+    uint8_t fixtype;
+    uint8_t lon;
+    uint8_t lat;
+    uint8_t height;
+    uint8_t speed;
+    uint8_t heading;
+} location_t;
+
 void callback(rx_info_t data)
 {
     printf("len=%d\n", data.len);
+}
+
+void location_decode(rx_info_t data)
+{
+    location_t *loc;
+    char timebuf[20];
+
+    ctime_r(&(data.second), timebuf);
+    loc = data.buf;
+    printf("========= %s =========\n", timebuf);
+    printf("RSSI = %d\nCR = %d\n", data.rssi, data.cr);
+    printf("Latitude = %.7lf\n", double(loc->lat) * 1e-7);
+    printf("Longitude = %.7lf\n", double(loc->lon) * 1e-7);
+    printf("Height = %.2lf meters\n", double(loc->height) * 1e-3);
+    printf("Speed = %.2f m/s\n", double(loc->speed) * 1e-3);
 }
 
 int main()
