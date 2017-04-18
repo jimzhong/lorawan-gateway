@@ -91,7 +91,7 @@ uint8_t static read_byte(uint8_t addr)
     wiringPiSPIDataRW(spi_ch, spibuf, 2);
     unselect_chip();
 
-    // fprintf(stderr, "Read 0x%x from 0x%x\n", spibuf[1], addr);
+    fprintf(stderr, "Read 0x%x from 0x%x\n", spibuf[1], addr);
     return spibuf[1];
 }
 
@@ -104,7 +104,7 @@ void static write_byte(uint8_t addr, uint8_t value)
     select_chip();
     wiringPiSPIDataRW(spi_ch, spibuf, 2);
     unselect_chip();
-    // fprintf(stderr, "Wrote 0x%x to 0x%x\n", value, addr);
+    fprintf(stderr, "Wrote 0x%x to 0x%x\n", value, addr);
 }
 
 static void write_fifo (uint8_t* buf, uint8_t len)
