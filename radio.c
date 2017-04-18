@@ -27,6 +27,7 @@
 
 /* private global variables */
 
+/*
 static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMsb", \
 "RegFrfMid", "RegFrfLsb", "RegPaConfig", "RegPaRamp", "RegOcp", "RegLna", \
 "LORARegFifoAddrPtr", "LORARegFifoTxBaseAddr", "LORARegFifoRxBaseAddr", \
@@ -42,7 +43,7 @@ static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "R
 "N/A", "LORARegInvertIQ", "N/A", "N/A", "N/A", "LORARegDetectionThreshold", "N/A", \
 "LORARegSyncWord", "FSKRegTimer2Coef", "FSKRegImageCal", "N/A", "N/A", "N/A", "N/A", \
 "RegDioMapping1", "RegDioMapping2", "RegVersion"};
-
+*/
 
 static int pin_nss;
 static int pin_rst;
@@ -90,7 +91,7 @@ uint8_t static read_byte(uint8_t addr)
     wiringPiSPIDataRW(spi_ch, spibuf, 2);
     unselect_chip();
 
-    fprintf(stderr, "Read 0x%x from 0x%x\n", spibuf[1], addr);
+    // fprintf(stderr, "Read 0x%x from 0x%x\n", spibuf[1], addr);
     return spibuf[1];
 }
 
@@ -103,7 +104,7 @@ void static write_byte(uint8_t addr, uint8_t value)
     select_chip();
     wiringPiSPIDataRW(spi_ch, spibuf, 2);
     unselect_chip();
-    fprintf(stderr, "Wrote 0x%x to 0x%x\n", value, addr);
+    // fprintf(stderr, "Wrote 0x%x to 0x%x\n", value, addr);
 }
 
 static void write_fifo (uint8_t* buf, uint8_t len)
@@ -503,7 +504,7 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
         // while not rxdone and rx_running==1
         while ((lora_get_irq_flags() & IRQ_LORA_RXDONE_MASK) == 0)
         {
-            printf("waiting for rxdone\n");
+            // printf("waiting for rxdone\n");
             delay(1);
             if (lora_state != RADIO_RX_RUNNING)
                 break;
@@ -516,7 +517,7 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
         flags = lora_get_irq_flags();
         lora_clear_irq_flags();
 
-        printf("flags = 0x%x\n", flags);
+        // printf("flags = 0x%x\n", flags);
 
         fill_rx_info_t(&data);
 
@@ -639,6 +640,11 @@ int lora_config(int sf, int cr, int bw, int txpower, int prelen, int syncword, u
         mc3 |= SX1278_MC3_LOW_DATA_RATE_OPTIMIZE;
 
     cmd_lock();
+    if (lora_state != RADIO_IDLE)
+    {
+        return -1;
+    }
+    lora_set_opmode(OPMODE_SLEEP);
     // set mc1 and mc2
     write_byte(LORARegModemConfig1, mc1);
     write_byte(LORARegModemConfig2, mc2);
@@ -648,6 +654,7 @@ int lora_config(int sf, int cr, int bw, int txpower, int prelen, int syncword, u
     lora_set_sync_word(syncword);
     lora_set_preamble_len(prelen);
 
+    lora_set_opmode(OPMODE_STANDBY);
     cmd_unlock();
     return 0;
 }
