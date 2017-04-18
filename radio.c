@@ -57,13 +57,13 @@ void static pin_init(int spi_ch, int spi_freq, int nss, int rst)
 {
     wiringPiSetup();
     wiringPiSPISetup(spi_ch, spi_freq);
+    digitalWrite(nss, HIGH);
+    digitalWrite(rst, HIGH);
     pinMode(nss, OUTPUT);
     // pinMode(PIN_DIO0, INPUT);
     // pinMode(PIN_DIO1, INPUT);
     // pinMode(PIN_DIO2, INPUT);
     pinMode(rst, OUTPUT);
-    digitalWrite(nss, HIGH);
-    digitalWrite(rst, HIGH);
 
     pin_nss = nss;
     pin_rst = rst;
@@ -135,7 +135,7 @@ static void lora_reset()
     digitalWrite(pin_rst, LOW);
     delay(10);
     digitalWrite(pin_rst, HIGH);
-    delay(10);
+    delay(50);
 }
 
 static uint8_t lora_get_version()
@@ -580,6 +580,8 @@ int lora_init(int spi_ch, int spi_freq, int nss, int rst)
         lora_clear_irq_flags();
         write_byte(LORARegIrqFlagsMask, 0xFF);
         write_byte(RegDioMapping1, MAP_DIO1_LORA_NOP|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
+
+        lora_get_irq_flags();
     }
     else
     {
