@@ -32,10 +32,10 @@ void location_decoder(rx_info_t data)
 {
     location_t *loc;
     char timebuf[20];
-
+    printf("New Pakcet\n");
     ctime_r(&(data.second), timebuf);
     loc = data.buf;
-    printf("========= %s =========\n", timebuf);
+    // printf("========= %s =========\n", timebuf);
     printf("RSSI = %d\nCR = %d\n", data.rssi, data.cr);
     printf("Latitude = %.7lf\n", (double)(loc->lat) * 1e-7);
     printf("Longitude = %.7lf\n", (double)(loc->lon) * 1e-7);
