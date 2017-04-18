@@ -517,7 +517,7 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
         flags = lora_get_irq_flags();
         lora_clear_irq_flags();
 
-        // printf("flags = 0x%x\n", flags);
+        printf("flags = 0x%x\n", flags);
 
         fill_rx_info_t(&data);
 
