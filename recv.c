@@ -37,10 +37,10 @@ void location_decode(rx_info_t data)
     loc = data.buf;
     printf("========= %s =========\n", timebuf);
     printf("RSSI = %d\nCR = %d\n", data.rssi, data.cr);
-    printf("Latitude = %.7lf\n", double(loc->lat) * 1e-7);
-    printf("Longitude = %.7lf\n", double(loc->lon) * 1e-7);
-    printf("Height = %.2lf meters\n", double(loc->height) * 1e-3);
-    printf("Speed = %.2f m/s\n", double(loc->speed) * 1e-3);
+    printf("Latitude = %.7lf\n", (double)(loc->lat) * 1e-7);
+    printf("Longitude = %.7lf\n", (double)(loc->lon) * 1e-7);
+    printf("Height = %.2lf meters\n", (double)(loc->height) * 1e-3);
+    printf("Speed = %.2f m/s\n", (double)(loc->speed) * 1e-3);
 }
 
 int main()
