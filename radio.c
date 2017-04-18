@@ -581,8 +581,6 @@ int lora_init(int spi_ch, int spi_freq, int nss, int rst)
         lora_clear_irq_flags();
         write_byte(LORARegIrqFlagsMask, 0xFF);
         write_byte(RegDioMapping1, MAP_DIO1_LORA_NOP|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
-
-        lora_get_irq_flags();
     }
     else
     {
@@ -644,7 +642,7 @@ int lora_config(int sf, int cr, int bw, int txpower, int prelen, int syncword, u
     {
         return -1;
     }
-    lora_set_opmode(OPMODE_SLEEP);
+    // lora_set_opmode(OPMODE_SLEEP);
     // set mc1 and mc2
     write_byte(LORARegModemConfig1, mc1);
     write_byte(LORARegModemConfig2, mc2);
@@ -654,7 +652,7 @@ int lora_config(int sf, int cr, int bw, int txpower, int prelen, int syncword, u
     lora_set_sync_word(syncword);
     lora_set_preamble_len(prelen);
 
-    lora_set_opmode(OPMODE_STANDBY);
+    // lora_set_opmode(OPMODE_STANDBY);
     cmd_unlock();
     return 0;
 }
