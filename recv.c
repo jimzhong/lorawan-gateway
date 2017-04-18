@@ -24,7 +24,7 @@ int main()
         return 1;
     }
     printf("Inited\n");
-    lora_config(8, 45, 250, 17, 10, 0x12, 1);
+    lora_config(8, 46, 250, 17, 10, 0x12, 1);
     lora_set_frequency(freq);
     printf("Freq=%ld\n", lora_get_frequency());
     lora_rx_continuous(callback, 1);
