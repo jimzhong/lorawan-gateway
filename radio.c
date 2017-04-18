@@ -56,7 +56,7 @@ static radio_state_t lora_state;
 void static pin_init(int spi_ch, int spi_freq, int nss, int rst)
 {
     wiringPiSetup();
-    wiringPiSPISetup(spi_ch, spi_freq);
+    // wiringPiSPISetup(spi_ch, spi_freq);
     digitalWrite(nss, HIGH);
     digitalWrite(rst, HIGH);
     pinMode(nss, OUTPUT);
@@ -571,7 +571,7 @@ int lora_init(int spi_ch, int spi_freq, int nss, int rst)
     lora_reset();
     if (lora_get_version() == 0x12)
     {
-        lora_set_opmode(OPMODE_STANDBY);
+        lora_set_opmode(OPMODE_SLEEP);
         // //calibrate
         // write_byte(RegPaConfig, 0);
         // write_byte(FSKRegImageCal, (readReg(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_MASK)|RF_IMAGECAL_IMAGECAL_START);
