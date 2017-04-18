@@ -28,7 +28,7 @@ void callback(rx_info_t data)
     printf("len=%d\n", data.len);
 }
 
-void location_decode(rx_info_t data)
+void location_decoder(rx_info_t data)
 {
     location_t *loc;
     char timebuf[20];
@@ -56,7 +56,7 @@ int main()
     lora_config(8, 46, 250, 1, 17, 10, 0x12);
     lora_set_frequency(freq);
     printf("Freq=%ld\n", lora_get_frequency());
-    lora_rx_continuous(callback, 0);
+    lora_rx_continuous(location_decoder, 0);
 
     return 0;
 }
