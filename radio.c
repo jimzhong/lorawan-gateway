@@ -56,7 +56,7 @@ static radio_state_t lora_state;
 void static pin_init(int spi_ch, int spi_freq, int nss, int rst)
 {
     wiringPiSetup();
-    // wiringPiSPISetup(spi_ch, spi_freq);
+    wiringPiSPISetup(spi_ch, spi_freq);
     digitalWrite(nss, HIGH);
     digitalWrite(rst, HIGH);
     pinMode(nss, OUTPUT);
