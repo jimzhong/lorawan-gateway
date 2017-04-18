@@ -3,7 +3,7 @@
 #define __SX1278_H__
 
 // default values for registers
-#define LORA_LNA_RX_GAIN_DEFAULT   0x20
+#define LORA_LNA_RX_GAIN_DEFAULT   0x21
 #define LORA_PAYLOAD_MAX_LENGTH_DEFAULT         128
 
 // Registers Mapping
