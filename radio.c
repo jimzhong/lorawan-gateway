@@ -48,7 +48,7 @@ static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "R
 static int pin_nss;
 static int pin_rst;
 static int spi_ch;
-static pthread_mutex_t lora_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+static pthread_mutex_t lora_mutex;
 static radio_state_t lora_state;
 
 /* end private global variables */
@@ -636,6 +636,11 @@ int lora_rx_continuous_stop()
 
 int lora_init(int spi_ch, int spi_freq, int nss, int rst)
 {
+    pthread_mutexattr_t mta;
+    pthread_mutexattr_init(&mta);
+    pthread_mutexattr_settype(&mta, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&lora_mutex, &mta);
+
     cmd_lock();
     pin_init(spi_ch, spi_freq, nss, rst);
     lora_reset();
