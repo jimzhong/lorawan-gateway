@@ -22,8 +22,8 @@
 #define lora_clear_irq_flags()    write_byte(LORARegIrqFlags, 0xFF)
 #define lora_get_irq_flags()      read_byte(LORARegIrqFlags)
 
-#define lora_set_invert_iq()      write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) | 0x40)
-#define lora_clear_invert_iq()    write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) & 0xbf)
+#define lora_set_invert_iq()      write_byte(LORARegInvertIQ, 0x27 | 0x40)
+#define lora_clear_invert_iq()    write_byte(LORARegInvertIQ, 0x27 & 0xbf)
 
 /* private global variables */
 
