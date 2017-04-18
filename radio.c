@@ -48,7 +48,7 @@ static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "R
 static int pin_nss;
 static int pin_rst;
 static int spi_ch;
-static pthread_mutex_t lora_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t lora_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 static radio_state_t lora_state;
 
 /* end private global variables */
