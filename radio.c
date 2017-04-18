@@ -19,6 +19,12 @@
 #define cmd_lock()       pthread_mutex_lock(&lora_mutex)
 #define cmd_unlock()     pthread_mutex_unlock(&lora_mutex)
 
+#define lora_clear_irq_flags()    write_byte(LORARegIrqFlags, 0xFF)
+#define lora_get_irq_flags()      read_byte(LORARegIrqFlags)
+
+#define lora_set_invert_iq()      write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) | 0x40)
+#define lora_clear_invert_iq()    write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) & 0xbf)
+
 /* private global variables */
 
 static char *regname[] = {"RegFifo", "RegOpMode", "N/A", "N/A", "N/A", "N/A", "RegFrfMsb", \
@@ -181,16 +187,6 @@ static void lora_set_rx_timeout(int symbols)
     val = (read_byte(LORARegModemConfig2) & 0xfc) | ((symbols >> 8) & 0x3);
     write_byte(LORARegModemConfig2, val);
     write_byte(LORARegSymbTimeoutLsb, (uint8_t)(val & 0xff));
-}
-
-static void lora_set_invert_iq()
-{
-    write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) | 0x40);
-}
-
-static void lora_clear_invert_iq()
-{
-    write_byte(LORARegInvertIQ, read_byte(LORARegInvertIQ) & 0xbf);
 }
 
 static int lora_get_last_packet_coding_rate()
@@ -364,7 +360,7 @@ int lora_tx(uint8_t *data, uint8_t len, int invert_iq)
         lora_clear_invert_iq();
 
     // write_byte(RegDioMapping1, MAP_DIO1_LORA_NOP|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
-    write_byte(LORARegIrqFlags, 0xFF);
+    lora_clear_irq_flags();
     write_byte(LORARegIrqFlagsMask, ~IRQ_LORA_TXDONE_MASK);
 
     write_byte(LORARegFifoTxBaseAddr, 0);
@@ -375,14 +371,14 @@ int lora_tx(uint8_t *data, uint8_t len, int invert_iq)
 
     lora_set_opmode(OPMODE_TX); //start sending here
 
-    while((read_byte(LORARegIrqFlags) & IRQ_LORA_TXDONE_MASK) == 0)
+    while((lora_get_irq_flags() & IRQ_LORA_TXDONE_MASK) == 0)
     {
         delay(1);   // wait until TX done IRQ
     }
 
     lora_state = RADIO_IDLE;
     write_byte(LORARegIrqFlagsMask, 0xFF);
-    write_byte(LORARegIrqFlags, 0xFF);
+    lora_clear_irq_flags();
 
     cmd_unlock();
     return 0;
@@ -418,7 +414,7 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols, int invert_iq)
     write_byte(LORARegPayloadMaxLength, LORA_PAYLOAD_MAX_LENGTH_DEFAULT);
     // write_byte(RegDioMapping1, MAP_DIO0_LORA_RXDONE|MAP_DIO1_LORA_RXTOUT|MAP_DIO2_LORA_NOP);
     // clear flags
-    write_byte(LORARegIrqFlags, 0xFF);
+    lora_clear_irq_flags();
     write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_RXTOUT_MASK|IRQ_LORA_CRCERR_MASK)));
     // start receiving
     lora_set_opmode(OPMODE_RX_SINGLE);
@@ -426,10 +422,10 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols, int invert_iq)
     // wait for rxdone or timeout flag is set
     do {
         delay(1);
-        flags = read_byte(LORARegIrqFlags);
+        flags = lora_get_irq_flags();
     } while ((flags & (IRQ_LORA_RXDONE_MASK | IRQ_LORA_RXTOUT_MASK)) == 0);
     // check flags
-    flags = read_byte(LORARegIrqFlags);
+    flags = lora_get_irq_flags();
     // fill rx_info_t with bw, sf, freq, second, nanosecond
 
     fill_rx_info_t(data);
@@ -463,7 +459,7 @@ int lora_rx_single(rx_info_t *data, int timeout_symbols, int invert_iq)
         retval = -1;
     }
     write_byte(LORARegIrqFlagsMask, 0xFF);
-    write_byte(LORARegIrqFlags, 0xFF);
+    lora_clear_irq_flags();
     cmd_unlock();
     return retval;
 }
@@ -495,17 +491,17 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
     write_byte(RegLna, LORA_LNA_RX_GAIN_DEFAULT);
     write_byte(LORARegPayloadMaxLength, LORA_PAYLOAD_MAX_LENGTH_DEFAULT);
     // clear flags
-    write_byte(LORARegIrqFlags, 0xFF);
+    lora_clear_irq_flags();
     write_byte(LORARegIrqFlagsMask, (uint8_t)(~(IRQ_LORA_RXDONE_MASK|IRQ_LORA_CRCERR_MASK)));
     // start receiving
     lora_set_opmode(OPMODE_RX);
 
-    printf("state = %d\n", lora_state);
+    // printf("state = %d\n", lora_state);
 
     while (lora_state == RADIO_RX_RUNNING)
     {
         // while not rxdone and rx_running==1
-        while ((read_byte(LORARegIrqFlags) & IRQ_LORA_RXDONE_MASK) == 0)
+        while ((lora_get_irq_flags() & IRQ_LORA_RXDONE_MASK) == 0)
         {
             printf("waiting for rxdone\n");
             delay(1);
@@ -517,7 +513,8 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
             break;
         }
         // check flags
-        flags = read_byte(LORARegIrqFlags);
+        flags = lora_get_irq_flags();
+        lora_clear_irq_flags();
 
         printf("flags = 0x%x\n", flags);
 
@@ -526,8 +523,6 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
         if (flags & IRQ_LORA_RXDONE_MASK)
         {
             // if rxdone
-            write_byte(LORARegIrqFlags, 0xFF);
-
             data.snr = lora_get_last_packet_snr();
             data.rssi = lora_get_last_packet_rssi();
             data.cr = lora_get_last_packet_coding_rate();
@@ -547,7 +542,6 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
             // lora_state != RADIO_RX_RUNNING
             // means lora_rx_continuous_stop is called
             lora_set_opmode(OPMODE_STANDBY);
-            write_byte(LORARegIrqFlags, 0xFF);
             write_byte(LORARegIrqFlagsMask, 0xFF);
             retval = -1;
             break;
@@ -583,7 +577,7 @@ int lora_init(int spi_ch, int spi_freq, int nss, int rst)
         // write_byte(FSKRegImageCal, (readReg(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_MASK)|RF_IMAGECAL_IMAGECAL_START);
         // while((read_byte(FSKRegImageCal) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING)
         // disable all irqs
-        write_byte(LORARegIrqFlags, 0xFF);
+        lora_clear_irq_flags();
         write_byte(LORARegIrqFlagsMask, 0xFF);
         write_byte(RegDioMapping1, MAP_DIO1_LORA_NOP|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
     }
