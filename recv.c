@@ -16,11 +16,11 @@ typedef struct
     uint8_t min;
     uint8_t sec;
     uint8_t fixtype;
-    uint8_t lon;
-    uint8_t lat;
-    uint8_t height;
-    uint8_t speed;
-    uint8_t heading;
+    uint32_t lon;
+    uint32_t lat;
+    uint32_t height;
+    uint32_t speed;
+    uint32_t heading;
 } location_t;
 
 void callback(rx_info_t data)
