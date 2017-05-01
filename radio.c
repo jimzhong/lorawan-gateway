@@ -586,7 +586,7 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
         flags = lora_get_irq_flags();
         lora_clear_irq_flags();
 
-        printf("flags = 0x%x\n", flags);
+        // printf("flags = 0x%x\n", flags);
 
         fill_rx_info_t(&data);
 
@@ -599,7 +599,7 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
 
             if ((lora_get_last_packet_crc_on() == 0) || ((flags & IRQ_LORA_CRCERR_MASK) == 0))
             {
-                fprintf(stderr, "crc ok\n");
+                // fprintf(stderr, "crc ok\n");
                 data.len = read_byte(LORARegRxNbBytes);
                 // put fifo pointer to last packet
                 write_byte(LORARegFifoAddrPtr, read_byte(LORARegFifoRxCurrentAddr));
