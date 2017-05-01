@@ -31,6 +31,7 @@ int sockfd;
 void rx_callback(rx_info_t data)
 {
     printf("RSSI = %d CR = %d LEN = %d\n", data.rssi, data.cr, data.len);
+    send_to_server(sockfd, &data, sizeof(rx_info_t));
 }
 
 int main(int argc, char **argv)
