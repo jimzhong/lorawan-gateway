@@ -17,7 +17,6 @@
 
 #include <wiringPi.h>
 
-#include "heap.h"
 #include "radio.h"
 #include "network.h"
 
