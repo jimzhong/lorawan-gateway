@@ -16,9 +16,9 @@ typedef struct
     uint8_t min;
     uint8_t sec;
     uint8_t fixtype;
-    uint32_t lon;
-    uint32_t lat;
-    uint32_t height;
+    int32_t lon;
+    int32_t lat;
+    int32_t height;
     uint32_t speed;
     uint32_t heading;
 } location_t;
@@ -31,16 +31,12 @@ void callback(rx_info_t data)
 void location_decoder(rx_info_t data)
 {
     location_t *loc;
-    char timebuf[20];
-    // printf("New Pakcet\n");
-    // ctime_r(&(data.second), timebuf);
     loc = (location_t *)data.buf;
-    // printf("========= %s =========\n", timebuf);
-    printf("RSSI = %d\nCR = %d\nLEN = %d\n", data.rssi, data.cr, data.len);
-    // printf("Latitude = %.7lf\n", (double)(loc->lat) * 1e-7);
-    // printf("Longitude = %.7lf\n", (double)(loc->lon) * 1e-7);
-    // printf("Height = %.2lf meters\n", (double)(loc->height) * 1e-3);
-    // printf("Speed = %.2f m/s\n", (double)(loc->speed) * 1e-3);
+    printf("RSSI = %d CR = %d LEN = %d\n", data.rssi, data.cr, data.len);
+    printf("Latitude = %.7lf\n", (double)(loc->lat) * 1e-7);
+    printf("Longitude = %.7lf\n", (double)(loc->lon) * 1e-7);
+    printf("Height = %.2lf meters\n", (double)(loc->height) * 1e-3);
+    printf("Speed = %.2f m/s\n", (double)(loc->speed) * 1e-3);
 }
 
 int main()
