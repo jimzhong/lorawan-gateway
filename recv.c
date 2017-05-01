@@ -19,8 +19,8 @@ typedef struct
     int32_t lon;
     int32_t lat;
     int32_t height;
-    uint32_t speed;
-    uint32_t heading;
+    int32_t speed;
+    int32_t heading;
 } location_t;
 
 void callback(rx_info_t data)
