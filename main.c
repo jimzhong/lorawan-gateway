@@ -21,188 +21,23 @@
 #include "radio.h"
 #include "network.h"
 
-#define MAX_EVENTS 32
-#define DEFAULT_CLOCK CLOCK_REALTIME
-#define RXTX_LOCK_NUMBER 2
+#define PIN_NSS     6
+#define PIN_RST     3
 
-// BUF_LENGTH must >= sizeof(tx_request_t)
-#define BUF_LENGTH 1024
-#define TX_QUEUE_LENGTH 20
-#define TX_QUEUE_MAX_DELAY_SEC 5    // how many seconds of delay allowed for a tx request
+#define SYNCWORD    0x12
+#define PRELEN      10
 
-typedef struct
+
+void rx_callback(rx_info_t data)
 {
-    uint8_t sf;
-    uint8_t cr;
-    uint16_t bw;
-    uint16_t txpower;
-    uint16_t pad1;
-    uint32_t txfreq;
-    uint32_t second;
-    uint32_t nanosecond;
-    uint8_t len;
-    uint8_t buf[256];
-} tx_request_t;
-
-int volatile running = 1;
-int sockfd;
-int timerfd[TX_QUEUE_LENGTH];
-tx_request_t *tx_queue[TX_QUEUE_LENGTH] = {};    // NULL slots are usable
-
-int min(int a, int b)
-{
-    if (a < b)
-        return a;
-    return b;
-}
-
-void exit_handler(int signum)
-{
-    printf("Received signal %d\n", signum);
-    running = 0;
-}
-
-PI_THREAD (lora_rx_task)
-{
-    int len;
-    rx_info_t data;
-    while(running)
-    {
-        // piLock(RXTX_LOCK_NUMBER);
-        len = lora_rx_continuous(&data);
-        // piUnlock(RXTX_LOCK_NUMBER);
-        if (len > 0)
-        {
-            send_to_server(sockfd, &data, sizeof(rx_info_t));
-        }
-        else
-        {
-            usleep(1000);   // if len < 0, rx is canncelled, let tx first
-        }
-    }
-    return 0;
-}
-
-// set a timer to expire at tp absolute time
-void timer_set_expire_at(int fd, long second, long nanosecond)
-{
-    struct itimerspec new_value;
-    new_value.it_value.tv_sec = second;
-    new_value.it_value.tv_nsec = nanosecond;
-    new_value.it_interval.tv_sec = 0;
-    new_value.it_interval.tv_nsec = 0;
-
-    // fprintf(stderr, "Setting fd %d to expire at %ld.%ld\n", fd, second, nanosecond);
-
-    if (timerfd_settime(fd, TFD_TIMER_ABSTIME, &new_value, NULL) == -1)
-    {
-        perror("timerfd_settime");
-        exit(-1);
-    }
-}
-
-void timer_cancel(int fd)
-{
-    timer_set_expire_at(fd, 0, 0);
-}
-
-void epoll_register_readable(int epfd, int fd)
-{
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.fd = fd;
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
-    {
-        perror("epoll_ctl");
-        exit(-1);
-    }
-}
-
-void queue_tx_request(tx_request_t *req)
-{
-    int i;
-    for (i = 0; i < TX_QUEUE_LENGTH; i++)
-    {
-        if (tx_queue[i] == NULL)    // find the first empty slot
-        {
-            // copy data into new slot
-            tx_queue[i] = malloc(sizeof(tx_request_t));
-            assert(tx_queue[i] != NULL);
-            memmove(tx_queue[i], req, sizeof(tx_request_t));
-            // start the corresponding timer
-            fprintf(stderr, "TX Request: SF=%u,CR=%u,BW=%u,TXP=%u,FREQ=%u,SEC=%u,NS=%u,LEN=%u\n", \
-                req->sf, req->cr, req->bw, req->txpower, req->txfreq, req->second, req->nanosecond, req->len);
-            timer_set_expire_at(timerfd[i], req->second, req->nanosecond);
-            fprintf(stderr, "Queued a TX request of %d bytes.\n", req->len);
-            return;
-        }
-    }
-    // should never reach here
-    fprintf(stderr, "TX queue is full!!!\n");
-}
-
-void handle_timer_expiration(int fd)
-{
-    int i;
-    long old_freq;
-    tx_request_t *data;
-
-    fprintf(stderr, "Handling expiration of fd %d\n", fd);
-    for (i = 0; i < TX_QUEUE_LENGTH; i++)
-    {
-        if (timerfd[i] == fd)
-        {
-            data = tx_queue[i];
-            tx_queue[i] = NULL;
-            timer_cancel(fd);
-            assert(data != NULL);
-            lora_rx_continuous_stop();
-            // if (data->txpower != 0)
-            // {
-            //     lora_set_txpower(data->txpower);
-            // }
-            // if (data->txfreq != 0)
-            // {
-            //     old_freq = lora_get_frequency();
-            //     lora_set_frequency(data->txfreq);
-            // }
-            // lora_config(tx_queue[i]->sf, tx_queue[i]->cr, tx_queue[i]->bw);
-            lora_tx(data->buf, data->len);
-            fprintf(stderr, "Sent a packet of %d bytes\n", data->len);
-            // if (data->txfreq != 0)
-            // {
-            //     lora_set_frequency(old_freq)
-            // }
-            free(data);
-            return;
-        }
-    }
-    // should never reach here
-    fprintf(stderr, "timerfd not found.\n");
-}
-
-
-void register_signal_handler()
-{
-    struct sigaction act;
-    sigaction(SIGINT, NULL, &act);
-    act.sa_handler = exit_handler;
-    sigaction(SIGINT, &act, NULL);
+    printf("RSSI = %d CR = %d LEN = %d\n", data.rssi, data.cr, data.len);
 }
 
 int main(int argc, char **argv)
 {
-    int i;
     int port;
     int cr, sf, bw;
     long freq;
-    // epoll related argument
-    int nfds;
-    int epfd;
-    struct epoll_event events[MAX_EVENTS];
-    // receive buffer and length
-    char buf[BUF_LENGTH];
-    int len;
 
     if (argc < 7)
     {
@@ -223,120 +58,17 @@ int main(int argc, char **argv)
         printf("Cannot parse port.\n");
         exit(-1);
     }
-    if (lora_init() == -1)
-    {
-        printf("SX1278 not found\n");
-        exit(-1);
-    }
-    if (lora_config(sf, cr, bw) == -1)
-    {
-        printf("Wrong sf/cr/bw.\n");
-        lora_cleanup();
-        exit(-1);
-    }
-    if (lora_set_frequency(freq) == -1)
-    {
-        printf("Wrong frequency.\n");
-        lora_cleanup();
-        exit(-1);
-    }
-    register_signal_handler();
-
     // initialize socket
     sockfd = connect_to_server(argv[1], port);
-    // initialize timers for each slot of the tx queue
-    for (i = 0; i < TX_QUEUE_LENGTH; i++)
-    {
-        timerfd[i] = timerfd_create(DEFAULT_CLOCK, 0);
-    }
 
-    epfd = epoll_create1(0);
-    if (epfd == -1)
+    if(lora_init(0, 500000, PIN_NSS, PIN_RST))
     {
-        perror("epoll_create1");
-        exit(-1);
+        printf("SX1278 Not Present\n");
+        return 1;
     }
-    // register sockfd to epoll
-    epoll_register_readable(epfd, sockfd);
-    // register timerfds
-    for (i = 0; i < TX_QUEUE_LENGTH; i++)
-    {
-        epoll_register_readable(epfd, timerfd[i]);
-    }
+    lora_config(sf, cr, bw, 1, 17, PRELEN, SYNCWORD);
+    lora_set_frequency(freq);
+    lora_rx_continuous(rx_callback, 0);
 
-    if (piThreadCreate(lora_rx_task) != 0)
-    {
-        printf("RX thread creation failed.\n");
-        lora_cleanup();
-        exit(-1);
-    }
-
-    while(running)
-    {
-        nfds = epoll_wait(epfd, events, MAX_EVENTS, 200);
-        if (nfds == -1)
-        {
-            perror("epoll_wait");
-            exit(-1);
-        }
-        // fprintf(stderr, "%d fds are ready\n", nfds);
-        for (i = 0; i < nfds; i++)
-        {
-            if (events[i].data.fd == sockfd)
-            {
-                len = recv_from_server(sockfd, buf, BUF_LENGTH);
-                if (len > 0)
-                {
-                    queue_tx_request((tx_request_t *)buf);
-                }
-            }
-            else
-            {
-                // some timer has expired
-                handle_timer_expiration(events[i].data.fd);
-            }
-        }
-    }
-    lora_cleanup();
-    close(epfd);
-    close(sockfd);
     return 0;
-}
-
-
-
-static void daemonize(void)
-{
-  int maxfd;
-  int i;
-
-  /* fork #1: exit parent process and continue in the background */
-  if ((i = fork()) < 0) {
-    perror("couldn't fork");
-    exit(2);
-  } else if (i > 0) {
-    _exit(0);
-  }
-
-  /* fork #2: detach from terminal and fork again so we can never regain
-   * access to the terminal */
-  setsid();
-  if ((i = fork()) < 0) {
-    perror("couldn't fork #2");
-    exit(2);
-  } else if (i > 0) {
-    _exit(0);
-  }
-
-  /* change to root directory and close file descriptors */
-  chdir("/");
-  maxfd = getdtablesize();
-  for (i = 0; i < maxfd; i++) {
-    close(i);
-  }
-
-  /* use /dev/null for stdin, stdout and stderr */
-  open("/dev/null", O_RDONLY);
-  open("/dev/null", O_WRONLY);
-  open("/dev/null", O_WRONLY);
 }
