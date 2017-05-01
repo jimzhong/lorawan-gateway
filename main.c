@@ -26,6 +26,7 @@
 #define SYNCWORD    0x12
 #define PRELEN      10
 
+int sockfd;
 
 void rx_callback(rx_info_t data)
 {
