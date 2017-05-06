@@ -574,7 +574,7 @@ int lora_rx_continuous(void (*callback)(rx_info_t data), int invert_iq)
         // while not rxdone and rx_running==1
         while ((lora_get_irq_flags() & IRQ_LORA_RXDONE_MASK) == 0)
         {
-            // printf("waiting for rxdone\n");
+            printf("waiting for rxdone\n");
             delay(1);
             if (lora_state != RADIO_RX_RUNNING)
                 break;
