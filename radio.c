@@ -674,6 +674,8 @@ int lora_init(int spi_ch, int spi_freq, int nss, int rst)
 int lora_config(int sf, int cr, int bw, int crcon, int txpower, int prelen, int syncword)
 {
     cmd_lock();
+    printf("SF=%d CR=%d BW=%d TXP=%d PRELEN=%d SYNC=%x\n", sf, cr, bw, txpower, prelen, syncword);
+
     if (lora_set_sf_cr_bw_crc(sf, cr, bw, crcon) != 0)
     {
         cmd_unlock();
