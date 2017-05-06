@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <arpa/inet.h>
 
 #include <wiringPi.h>
 
@@ -23,7 +22,7 @@
 #define PIN_NSS     6
 #define PIN_RST     3
 
-#define SYNCWORD    0x12
+#define SYNCWORD    0x56
 #define PRELEN      10
 
 int sockfd;
