@@ -391,6 +391,7 @@ int lora_set_frequency(long freq)
 {
     uint64_t frf = ((uint64_t)freq << 19) / 32000000;
     cmd_lock();
+    printf("FREQ=%ld\n", freq);
     if (lora_state == RADIO_IDLE && freq < 450000000 && freq > 420000000)
     {
         write_byte(RegFrfMsb, (uint8_t)(frf>>16));
@@ -674,7 +675,7 @@ int lora_init(int spi_ch, int spi_freq, int nss, int rst)
 int lora_config(int sf, int cr, int bw, int crcon, int txpower, int prelen, int syncword)
 {
     cmd_lock();
-    printf("SF=%d CR=%d BW=%d TXP=%d PRELEN=%d SYNC=%x\n", sf, cr, bw, txpower, prelen, syncword);
+    printf("SF=%d CR=%d BW=%d TXP=%d PRELEN=%d SYNC=0x%x\n", sf, cr, bw, txpower, prelen, syncword);
 
     if (lora_set_sf_cr_bw_crc(sf, cr, bw, crcon) != 0)
     {
