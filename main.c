@@ -29,7 +29,12 @@ int sockfd;
 
 void rx_callback(rx_info_t data)
 {
-    printf("RSSI = %d CR = %d LEN = %d\n", data.rssi, data.cr, data.len);
+    struct tm t;
+    time_t timestamp;
+    timestamp = time(NULL);
+    localtime_r(&timestamp, &t);
+    printf("[%02d:%02d:%02d] LEN = %d SNR = %d RSSI = %d CR = %d\n", t.tm_hour, \
+    t.tm_min, t.tm_sec, data.len, data.snr, data.rssi, data.cr);
     send_to_server(sockfd, &data, sizeof(rx_info_t));
 }
 

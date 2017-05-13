@@ -21,10 +21,6 @@ void send_to_server(int sockfd, void *buf, int len)
     {
         perror("send");
     }
-    else
-    {
-        printf("Sent %d bytes to server.\n", ret);
-    }
 }
 
 int recv_from_server(int sockfd, void *buf, int maxlen)
