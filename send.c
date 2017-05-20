@@ -31,6 +31,7 @@ int main(int argc, char ** argv)
         memset(buf, i, sizeof(buf));
         lora_tx(buf, 40, 1);
         delay(1000);
+        printf("Packet %d\n", i);
     }
     lora_cleanup();
     return 0;
