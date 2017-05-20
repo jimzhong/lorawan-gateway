@@ -14,14 +14,6 @@ long freq = 438000000;
 #define SYNCWORD    0x56
 #define PRELEN      10
 
-void stop()
-{
-    running = 0;
-    lora_rx_continuous_stop();
-    lora_cleanup();
-    exit(0);
-}
-
 int main(int argc, char ** argv)
 {
     int i;
