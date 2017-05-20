@@ -4,11 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-uint8_t packet[] = {0xde, 0xad, 0xbe, 0xef};
-uint8_t buf[10];
+uint8_t buf[40];
 
-volatile int running = 1;
-long freq = 436000000;
+long freq = 438000000;
+
+#define PIN_NSS     6
+#define PIN_RST     3
+
+#define SYNCWORD    0x56
+#define PRELEN      10
 
 void stop()
 {
@@ -18,17 +22,22 @@ void stop()
     exit(0);
 }
 
-int main()
+int main(int argc, char ** argv)
 {
-    lora_init();
-    lora_config(8, 46, 250);
+    int i;
+    int sf;
+
+    sf = atoi(argv[1]);
+    lora_init(0, 500000, PIN_NSS, PIN_RST);
+
+    lora_config(sf, 46, 250, 1, 17, PRELEN, SYNCWORD);
     lora_set_frequency(freq);
-    printf("Freq=%ld\n", lora_get_frequency());
-    lora_set_txpower(10);
-    while (running)
+    printf("Freq = %ld\n", lora_get_frequency());
+
+    for (i = 1; i <= 20; i++)
     {
-        memcpy(buf, packet, 4);
-        lora_tx(buf, 4);
+        memset(buf, i, sizeof(buf));
+        lora_tx(buf, 40, 1);
         delay(1000);
     }
     lora_cleanup();
